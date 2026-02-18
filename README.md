@@ -1,0 +1,1 @@
+# logsentry-unix-cli
