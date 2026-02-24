@@ -11,6 +11,7 @@ fi
 
 
 # CLI Header
+echo ""
 echo "================================"
 echo "   LogSentry Unix CLI Tool"
 echo "================================"
@@ -21,14 +22,14 @@ echo "--------------------------------"
 
 
 # Count no. of log files
-log_count=$(ls logs/*.log 2>/dev/null | wc -l)
+log_count=$(ls logs/*.log 2>/dev/null | wc -l | xargs)
 echo "Log files found: $log_count"
 
 # Count ERROR lines
-error_count=$(grep -i "ERROR" logs/*.log 2>/dev/null | wc -l)
+error_count=$(grep -i "ERROR" logs/*.log 2>/dev/null | wc -l | xargs)
 
 # Count WARNING lines
-warning_count=$(grep -i "WARNING" logs/*.log 2>/dev/null | wc -l)
+warning_count=$(grep -i "WARNING" logs/*.log 2>/dev/null | wc -l | xargs)
 
 echo ""
 echo "Analysis Summary:"
