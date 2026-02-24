@@ -1,0 +1,6 @@
+2026-02-24 10:12:01 INFO Server started
+2026-02-24 10:12:05 INFO Database connected
+2026-02-24 10:13:10 WARNING High memory usage
+2026-02-24 10:14:22 ERROR Failed to fetch user data
+2026-02-24 10:15:02 INFO Request processed
+2026-02-24 10:16:45 ERROR Timeout while calling API

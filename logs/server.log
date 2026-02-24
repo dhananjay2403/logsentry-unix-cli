@@ -1,0 +1,5 @@
+2026-02-24 11:01:11 INFO Server health check OK
+2026-02-24 11:02:33 WARNING Disk usage at 85%
+2026-02-24 11:03:10 INFO New connection established
+2026-02-24 11:04:55 ERROR Unable to write to log file
+2026-02-24 11:05:12 INFO Connection closed
