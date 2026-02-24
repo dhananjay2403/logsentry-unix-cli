@@ -1,0 +1,17 @@
+# Runtime artifacts
+backups/
+*.tar.gz
+report.txt
+
+# macOS system files
+.DS_Store
+
+# Not ignoring Logs generated during testing
+
+# Editor files
+.vscode/
+
+# Temporary files
+*.swp
+*.swo
+*~
