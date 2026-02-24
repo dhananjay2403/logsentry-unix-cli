@@ -21,6 +21,7 @@ A Bash-based command-line tool that analyzes log files, generates reports, and c
 ```bash
 chmod +x log_tool.sh
 ./log_tool.sh
+```
 
 ## Screenshots
 
