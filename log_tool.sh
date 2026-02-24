@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # LogSentry Unix CLI Tool
-# This script analyzes log files in the logs directory
+# This script analyzes log files and creates backups
 
 echo "Starting Log Analyzer..."
 echo "--------------------------------"
@@ -21,8 +21,10 @@ echo "Analysis Summary:"
 echo "Errors: $error_count"
 echo "Warnings: $warning_count"
 
+
+
 # Generate report
-timestamp=$(date +"%Y-%m-%d %H:%M:%S")
+timestamp=$(date +"%Y-%m-%d_%H-%M-%S")
 
 echo "" > report.txt
 echo "Log Analysis Report" >> report.txt
@@ -34,3 +36,18 @@ echo "Warnings: $warning_count" >> report.txt
 
 echo ""
 echo "Report generated: report.txt"
+
+
+
+# Create backup directory
+backup_dir="backups/$timestamp"
+mkdir -p "$backup_dir"
+
+# Copy log files to backup directory
+cp logs/*.log "$backup_dir"
+
+# Compress backup
+tar -czf "$backup_dir.tar.gz" "$backup_dir"
+
+echo "Backup created at: $backup_dir"
+echo "Compressed backup: $backup_dir.tar.gz"
