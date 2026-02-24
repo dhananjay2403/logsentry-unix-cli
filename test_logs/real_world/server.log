@@ -1,0 +1,15 @@
+2026-02-25 15:00:00 INFO Server started
+2026-02-25 15:01:10 INFO Port listening
+2026-02-25 15:02:22 WARNING CPU spike
+2026-02-25 15:03:33 INFO Connection established
+2026-02-25 15:04:40 ERROR Socket failure
+2026-02-25 15:05:50 INFO Retry binding
+2026-02-25 15:06:10 INFO Connection closed
+2026-02-25 15:07:25 INFO Health check OK
+2026-02-25 15:08:45 WARNING Memory high
+2026-02-25 15:09:55 INFO Metrics recorded
+2026-02-25 15:10:12 ERROR Worker crash
+2026-02-25 15:11:33 INFO Restart successful
+2026-02-25 15:12:44 INFO Server stable
+2026-02-25 15:13:55 INFO Cleanup done
+2026-02-25 15:14:20 INFO Running normally
