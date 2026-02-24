@@ -3,10 +3,24 @@
 # LogSentry Unix CLI Tool
 # This script analyzes log files and creates backups
 
+# Safety Check: Ensure logs exist
+if ! ls logs/*.log 1> /dev/null 2>&1; then
+  echo "No log files found in logs directory."
+  exit 1
+fi
+
+
+# CLI Header
+echo "================================"
+echo "   LogSentry Unix CLI Tool"
+echo "================================"
+echo ""
+
 echo "Starting Log Analyzer..."
 echo "--------------------------------"
 
-# Count number of log files
+
+# Count no. of log files
 log_count=$(ls logs/*.log 2>/dev/null | wc -l)
 echo "Log files found: $log_count"
 
@@ -38,7 +52,6 @@ echo ""
 echo "Report generated: report.txt"
 
 
-
 # Create backup directory
 backup_dir="backups/$timestamp"
 mkdir -p "$backup_dir"
@@ -51,3 +64,5 @@ tar -czf "$backup_dir.tar.gz" "$backup_dir"
 
 echo "Backup created at: $backup_dir"
 echo "Compressed backup: $backup_dir.tar.gz"
+echo ""
+echo "Process completed successfully!"
