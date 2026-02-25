@@ -82,18 +82,18 @@ The test runner executes multiple scenarios and prints a compact summary for eac
 Run a single directory manually
 ```bash
 chmod +x log_tool.sh
-./log_tool.sh test_logs/real_world
+logsentry test_logs/real_world
 ```
 
 You can also analyze any custom directory containing .log files:
 ```bash
-./log_tool.sh /path/to/your/logs
+logsentry /path/to/your/logs
 ```
 
 For example: Real-World Simulation - A combined dataset simulates production-like conditions with mixed log patterns.
 
 ```bash
-./log_tool.sh test_logs/real_world
+logsentry test_logs/real_world
 ```
 
 What the tests validate
