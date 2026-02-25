@@ -1,7 +1,11 @@
-# LogSentry Unix CLI
+<p align="center">
+  <h1 align="center">LogSentry Unix CLI</h1>
+  <p align="center">
+    A reusable Bash CLI for multi-service log analysis, reporting, and automated backups.
+  </p>
+</p>
 
-A reusable Bash-based command-line tool for analyzing multi-service logs, generating reports, and creating automated backups.
-
+---
 
 ## Installation
 
@@ -10,7 +14,7 @@ chmod +x install.sh
 ./install.sh
 ```
 
-After installation, run from anywhere:
+Run from anywhere:
 
 ```bash
 logsentry
@@ -35,7 +39,7 @@ logsentry test_logs/real_world
 - Structured test suite covering isolated and production-like scenarios
 
 
-## Tech Used
+## Tech Stack
 
 - Bash
 - Unix CLI tools (grep, wc, tar, cp)
@@ -44,18 +48,32 @@ logsentry test_logs/real_world
 
 ## Screenshots
 
-### CLI Tool Execution
-![Run Output](screenshots/run_output.jpg)
-
-### Generated Report
-![Report View](screenshots/report_view.jpg)
-
-### Project Structure
-![Project Structure](screenshots/project_structure.jpg)
-
-### Backup Artifacts
-![Backup Example](screenshots/backup_example.jpg)
-
+<table>
+  <tr>
+    <td align="center"><b>CLI Execution</b></td>
+    <td align="center"><b>Generated Report</b></td>
+  </tr>
+  <tr>
+    <td>
+      <img src="screenshots/run_output.jpg" width="100%" style="border:1px solid #ccc; border-radius:6px;" />
+    </td>
+    <td>
+      <img src="screenshots/report_view.jpg" width="100%" style="border:1px solid #ccc; border-radius:6px;" />
+    </td>
+  </tr>
+  <tr>
+    <td align="center"><b>Project Structure</b></td>
+    <td align="center"><b>Backup Snapshots</b></td>
+  </tr>
+  <tr>
+    <td>
+      <img src="screenshots/project_structure.jpg" width="100%" style="border:1px solid #ccc; border-radius:6px;" />
+    </td>
+    <td>
+      <img src="screenshots/backup_example.jpg" width="100%" style="border:1px solid #ccc; border-radius:6px;" />
+    </td>
+  </tr>
+</table>
 
 ---
 
@@ -63,14 +81,14 @@ logsentry test_logs/real_world
 
 This project includes an automated test runner and structured test fixtures to validate behavior across isolated and real-world scenarios.
 
-### Run the full test suite
+### Run full test suite
 
 ```bash
 chmod +x run_tests.sh
 ./run_tests.sh
 ```
 
-The test runner executes multiple scenarios and prints a compact summary for each:
+Scenarios covered:
 
 - test_logs/clean — clean logs (no errors)
 - test_logs/errors — error-heavy logs
@@ -79,24 +97,13 @@ The test runner executes multiple scenarios and prints a compact summary for eac
 - test_logs/real_world — combined production-like dataset
 - test_logs/empty — empty directory (graceful failure)
 
-Run a single directory manually
+Run manually
 ```bash
-chmod +x log_tool.sh
 logsentry test_logs/real_world
-```
-
-You can also analyze any custom directory containing .log files:
-```bash
 logsentry /path/to/your/logs
 ```
 
-For example: Real-World Simulation - A combined dataset simulates production-like conditions with mixed log patterns.
-
-```bash
-logsentry test_logs/real_world
-```
-
-What the tests validate
+## Validation checks
 - Correct aggregation of ERROR and WARNING entries (case-insensitive)
 - Robust handling of malformed or noisy log entries
 - Graceful exit when no log files are found
