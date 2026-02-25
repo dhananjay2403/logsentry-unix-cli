@@ -31,14 +31,40 @@ echo "--------------------------------"
 log_count=$(ls "$LOG_DIR"/*.log 2>/dev/null | wc -l | xargs)
 echo "Log files found: $log_count"
 
+
+# Per-file analysis
+echo ""
+echo "Per-file analysis:"
+echo "-------------------"
+
+total_errors=0
+total_warnings=0
+
+for logfile in "$LOG_DIR"/*.log; do
+  filename=$(basename "$logfile")
+
+  file_errors=$(grep -i "ERROR" "$logfile" 2>/dev/null | wc -l | xargs)
+  file_warnings=$(grep -i "WARNING" "$logfile" 2>/dev/null | wc -l | xargs)
+
+  echo "$filename → Errors: $file_errors Warnings: $file_warnings"
+
+  total_errors=$((total_errors + file_errors))
+  total_warnings=$((total_warnings + file_warnings))
+done
+
+
 # Count ERROR lines
-error_count=$(grep -i "ERROR" "$LOG_DIR"/*.log 2>/dev/null | wc -l | xargs)
+# error_count=$(grep -i "ERROR" "$LOG_DIR"/*.log 2>/dev/null | wc -l | xargs)         # previously
+error_count=$total_errors
+
 
 # Count WARNING lines
-warning_count=$(grep -i "WARNING" "$LOG_DIR"/*.log 2>/dev/null | wc -l | xargs)
+# warning_count=$(grep -i "WARNING" "$LOG_DIR"/*.log 2>/dev/null | wc -l | xargs)         # previously
+warning_count=$total_warnings
+
 
 echo ""
-echo "Analysis Summary:"
+echo "Total Summary:"
 echo "Errors: $error_count"
 echo "Warnings: $warning_count"
 
