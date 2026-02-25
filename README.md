@@ -38,49 +38,50 @@ chmod +x log_tool.sh
 ![Backup Example](screenshots/backup_example.jpg)
 
 
-## Testing Approach
-
-The tool was validated using multiple controlled log scenarios to ensure robustness across real-world conditions.
-
-### Isolated Test Scenarios
-
-Each scenario verifies specific behavior:
-
-- **Clean logs** → validates zero-error handling  
-- **Warning-heavy logs** → ensures warning detection  
-- **Error-heavy logs** → validates error aggregation  
-- **Malformed logs** → confirms resilience to irregular input  
-- **Empty directory** → verifies graceful failure  
-
-Run individually:
-
-```bash
-./log_tool.sh test_logs/clean
-./log_tool.sh test_logs/errors
-./log_tool.sh test_logs/malformed
-./log_tool.sh test_logs/empty
-```
-
 ---
 
-### Real-World Simulation
+## Testing
 
-A combined dataset simulates production-like conditions with mixed log patterns.
+This project includes an automated test runner and structured test fixtures to validate behavior across isolated and real-world scenarios.
+
+### Run the full test suite
+
+```bash
+chmod +x run_tests.sh
+./run_tests.sh
+```
+
+The test runner executes multiple scenarios and prints a compact summary for each:
+
+- test_logs/clean — clean logs (no errors)
+- test_logs/errors — error-heavy logs
+- test_logs/warnings — warning-heavy logs (if present)
+- test_logs/malformed — noisy / malformed logs
+- test_logs/real_world — combined production-like dataset
+- test_logs/empty — empty directory (graceful failure)
+
+Run a single directory manually
+```bash
+chmod +x log_tool.sh
+./log_tool.sh test_logs/real_world
+```
+
+You can also analyze any custom directory containing .log files:
+```bash
+./log_tool.sh /path/to/your/logs
+```
+
+For example: Real-World Simulation - A combined dataset simulates production-like conditions with mixed log patterns.
 
 ```bash
 ./log_tool.sh test_logs/real_world
 ```
 
-This validates the tool’s ability to process heterogeneous logs at scale.
+What the tests validate
+- Correct aggregation of ERROR and WARNING entries (case-insensitive)
+- Robust handling of malformed or noisy log entries
+- Graceful exit when no log files are found
+- Automatic report generation (report.txt)
+- Timestamped backup creation and compression (backups/)
 
 ---
-
-### Key Validation Goals
-
-- Correct error and warning aggregation  
-- Case-insensitive parsing  
-- Robustness to malformed entries  
-- Graceful handling of missing logs  
-- Consistent reporting and backup generation  
-
-This approach mirrors unit-style and integration-style testing for CLI utilities.
