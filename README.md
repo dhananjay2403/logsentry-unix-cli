@@ -1,27 +1,46 @@
 # LogSentry Unix CLI
 
-A Bash-based command-line tool that analyzes log files, generates reports, and creates automated backups.
+A reusable Bash-based command-line tool for analyzing multi-service logs, generating reports, and creating automated backups.
+
+
+## Installation
+
+```bash
+chmod +x install.sh
+./install.sh
+```
+
+After installation, run from anywhere:
+
+```bash
+logsentry
+logsentry /path/to/logs
+```
+
+## Usage:
+
+```bash
+logsentry test_logs/real_world
+```
+
 
 ## Features
 
-- Counts ERROR and WARNING entries across logs
-- Generates timestamped analysis report
-- Creates backup snapshots of logs
-- Compresses backups for storage
-- Gracefully handles missing log files
+- Per-file log analysis with case-insensitive detection of ERROR and WARNING
+- Aggregated summary reporting across multi-service log directories
+- Timestamped report generation for audit-friendly traceability
+- Automated backup snapshots with .tar.gz compression
+- Directory-based execution (analyze any folder containing .log files)
+- Graceful failure handling for empty or invalid log directories
+- Structured test suite covering isolated and production-like scenarios
+
 
 ## Tech Used
 
-- Bash scripting
+- Bash
 - Unix CLI tools (grep, wc, tar, cp)
 - macOS Unix environment
 
-## Usage
-
-```bash
-chmod +x log_tool.sh
-./log_tool.sh
-```
 
 ## Screenshots
 
