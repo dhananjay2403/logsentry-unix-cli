@@ -1,0 +1,60 @@
+{"timestamp":"2026-02-26T14:02:18Z","service":"db-service","level":"ERROR","message":"User login","request_id":"req-28823"}
+{"timestamp":"2026-02-26T13:58:48Z","service":"worker","level":"INFO","message":"Timeout while calling API","request_id":"req-18168"}
+{"timestamp":"2026-02-26T14:26:52Z","service":"db-service","level":"ERROR","message":"Failed to serialize response","request_id":"req-9625"}
+{"timestamp":"2026-02-26T14:35:01Z","service":"auth-service","level":"ERROR","message":"Connection refused","request_id":"req-21428"}
+{"timestamp":"2026-02-26T14:09:09Z","service":"db-service","level":"INFO","message":"DB query slow","request_id":"req-14852"}
+{"timestamp":"2026-02-26T14:36:53Z","service":"api-service","level":"WARNING","message":"Cache miss","request_id":"req-22340"}
+{"timestamp":"2026-02-26T14:02:16Z","service":"db-service","level":"ERROR","message":"Permission denied","request_id":"req-108"}
+{"timestamp":"2026-02-26T14:07:15Z","service":"db-service","level":"WARNING","message":"Request succeeded","request_id":"req-26795"}
+{"timestamp":"2026-02-26T14:29:32Z","service":"worker","level":"ERROR","message":"DB query slow","request_id":"req-11555"}
+{"timestamp":"2026-02-26T14:10:10Z","service":"api-service","level":"WARNING","message":"Connection refused","request_id":"req-24679"}
+{"timestamp":"2026-02-26T14:02:04Z","service":"api-service","level":"INFO","message":"Request succeeded","request_id":"req-20917"}
+{"timestamp":"2026-02-26T14:06:44Z","service":"worker","level":"INFO","message":"Background job finished","request_id":"req-3059"}
+{"timestamp":"2026-02-26T14:19:17Z","service":"worker","level":"ERROR","message":"Timeout while calling API","request_id":"req-18539"}
+{"timestamp":"2026-02-26T13:50:59Z","service":"worker","level":"INFO","message":"User login","request_id":"req-20806"}
+{"timestamp":"2026-02-26T14:33:47Z","service":"worker","level":"INFO","message":"User login","request_id":"req-4041"}
+{"timestamp":"2026-02-26T14:34:35Z","service":"worker","level":"ERROR","message":"Permission denied","request_id":"req-16979"}
+{"timestamp":"2026-02-26T14:36:04Z","service":"db-service","level":"WARNING","message":"Connection refused","request_id":"req-5650"}
+{"timestamp":"2026-02-26T13:48:30Z","service":"worker","level":"INFO","message":"User login","request_id":"req-8329"}
+{"timestamp":"2026-02-26T14:23:40Z","service":"db-service","level":"ERROR","message":"Cache miss","request_id":"req-29890"}
+{"timestamp":"2026-02-26T14:01:03Z","service":"worker","level":"ERROR","message":"Token expired","request_id":"req-20562"}
+{"timestamp":"2026-02-26T13:40:47Z","service":"db-service","level":"WARNING","message":"Background job finished","request_id":"req-7185"}
+{"timestamp":"2026-02-26T14:31:36Z","service":"db-service","level":"WARNING","message":"User login","request_id":"req-15510"}
+{"timestamp":"2026-02-26T14:31:46Z","service":"api-service","level":"INFO","message":"Cache miss","request_id":"req-28277"}
+{"timestamp":"2026-02-26T14:31:16Z","service":"api-service","level":"ERROR","message":"Token expired","request_id":"req-10808"}
+{"timestamp":"2026-02-26T14:04:58Z","service":"db-service","level":"INFO","message":"Request succeeded","request_id":"req-19486"}
+{"timestamp":"2026-02-26T14:00:53Z","service":"auth-service","level":"WARNING","message":"Request succeeded","request_id":"req-31637"}
+{"timestamp":"2026-02-26T13:41:07Z","service":"api-service","level":"INFO","message":"Token expired","request_id":"req-3705"}
+{"timestamp":"2026-02-26T14:08:16Z","service":"db-service","level":"INFO","message":"Permission denied","request_id":"req-25610"}
+{"timestamp":"2026-02-26T13:53:47Z","service":"db-service","level":"INFO","message":"Cache miss","request_id":"req-29615"}
+{"timestamp":"2026-02-26T13:47:08Z","service":"worker","level":"INFO","message":"Request succeeded","request_id":"req-2925"}
+{"timestamp":"2026-02-26T14:23:32Z","service":"api-service","level":"INFO","message":"Permission denied","request_id":"req-31270"}
+{"timestamp":"2026-02-26T14:34:14Z","service":"worker","level":"INFO","message":"Background job finished","request_id":"req-8593"}
+{"timestamp":"2026-02-26T14:33:26Z","service":"api-service","level":"INFO","message":"Connection refused","request_id":"req-11261"}
+{"timestamp":"2026-02-26T14:03:12Z","service":"auth-service","level":"ERROR","message":"Cache miss","request_id":"req-25029"}
+{"timestamp":"2026-02-26T13:51:54Z","service":"auth-service","level":"ERROR","message":"Token expired","request_id":"req-23186"}
+{"timestamp":"2026-02-26T13:45:49Z","service":"worker","level":"ERROR","message":"Token expired","request_id":"req-1620"}
+{"timestamp":"2026-02-26T14:20:16Z","service":"api-service","level":"ERROR","message":"Failed to serialize response","request_id":"req-18942"}
+{"timestamp":"2026-02-26T13:54:46Z","service":"worker","level":"ERROR","message":"Token expired","request_id":"req-11268"}
+{"timestamp":"2026-02-26T14:18:18Z","service":"auth-service","level":"INFO","message":"Token expired","request_id":"req-19605"}
+{"timestamp":"2026-02-26T14:29:13Z","service":"auth-service","level":"WARNING","message":"Permission denied","request_id":"req-9624"}
+{"timestamp":"2026-02-26T14:08:15Z","service":"api-service","level":"WARNING","message":"Permission denied","request_id":"req-20072"}
+{"timestamp":"2026-02-26T14:20:05Z","service":"auth-service","level":"ERROR","message":"User login","request_id":"req-16208"}
+{"timestamp":"2026-02-26T14:16:58Z","service":"db-service","level":"INFO","message":"Connection refused","request_id":"req-20677"}
+{"timestamp":"2026-02-26T14:13:51Z","service":"worker","level":"WARNING","message":"Failed to serialize response","request_id":"req-29286"}
+{"timestamp":"2026-02-26T14:04:08Z","service":"worker","level":"ERROR","message":"Connection refused","request_id":"req-21940"}
+{"timestamp":"2026-02-26T14:26:40Z","service":"auth-service","level":"WARNING","message":"Connection refused","request_id":"req-2193"}
+{"timestamp":"2026-02-26T14:07:09Z","service":"api-service","level":"INFO","message":"Permission denied","request_id":"req-15226"}
+{"timestamp":"2026-02-26T14:16:52Z","service":"auth-service","level":"WARNING","message":"Token expired","request_id":"req-12164"}
+{"timestamp":"2026-02-26T13:44:15Z","service":"auth-service","level":"INFO","message":"Token expired","request_id":"req-2071"}
+{"timestamp":"2026-02-26T14:25:00Z","service":"db-service","level":"ERROR","message":"Background job finished","request_id":"req-31853"}
+{"timestamp":"2026-02-26T13:59:04Z","service":"worker","level":"WARNING","message":"Cache miss","request_id":"req-9418"}
+{"timestamp":"2026-02-26T14:01:17Z","service":"db-service","level":"INFO","message":"User login","request_id":"req-24441"}
+{"timestamp":"2026-02-26T13:38:49Z","service":"auth-service","level":"WARNING","message":"Permission denied","request_id":"req-2442"}
+{"timestamp":"2026-02-26T14:03:44Z","service":"worker","level":"WARNING","message":"Cache miss","request_id":"req-1869"}
+{"timestamp":"2026-02-26T14:16:50Z","service":"api-service","level":"WARNING","message":"Cache miss","request_id":"req-22669"}
+{"timestamp":"2026-02-26T13:54:24Z","service":"api-service","level":"WARNING","message":"Token expired","request_id":"req-13452"}
+{"timestamp":"2026-02-26T14:17:25Z","service":"auth-service","level":"ERROR","message":"Connection refused","request_id":"req-27075"}
+{"timestamp":"2026-02-26T14:31:53Z","service":"api-service","level":"INFO","message":"Permission denied","request_id":"req-32086"}
+{"timestamp":"2026-02-26T13:46:11Z","service":"worker","level":"INFO","message":"Request succeeded","request_id":"req-18009"}
+{"timestamp":"2026-02-26T14:30:44Z","service":"worker","level":"ERROR","message":"Request succeeded","request_id":"req-197"}

@@ -1,0 +1,52 @@
+2026-02-26 13:36:09 INFO auth-service User login attempt user_id=1036
+2026-02-26 13:06:01 INFO auth-service User login attempt user_id=1119
+2026-02-26 13:06:01 WARNING auth-service Token nearing expiry
+2026-02-26 14:37:44 INFO auth-service User login attempt user_id=1178
+2026-02-26 14:27:38 INFO auth-service User login attempt user_id=1170
+2026-02-26 14:20:17 INFO auth-service User login attempt user_id=1076
+2026-02-26 14:20:17 ERROR auth-service Token validation failed
+2026-02-26 13:34:49 INFO auth-service User login attempt user_id=1007
+2026-02-26 13:34:49 ERROR auth-service Token validation failed
+2026-02-26 13:33:07 INFO auth-service User login attempt user_id=1178
+2026-02-26 13:33:07 WARNING auth-service Token nearing expiry
+2026-02-26 14:16:36 INFO auth-service User login attempt user_id=1101
+2026-02-26 12:53:11 INFO auth-service User login attempt user_id=1131
+2026-02-26 13:03:42 INFO auth-service User login attempt user_id=1125
+2026-02-26 13:00:14 INFO auth-service User login attempt user_id=1085
+2026-02-26 14:26:48 INFO auth-service User login attempt user_id=1188
+2026-02-26 13:26:05 INFO auth-service User login attempt user_id=1100
+2026-02-26 12:47:08 INFO auth-service User login attempt user_id=1106
+2026-02-26 13:33:36 INFO auth-service User login attempt user_id=1183
+2026-02-26 13:21:36 INFO auth-service User login attempt user_id=1148
+2026-02-26 12:54:11 INFO auth-service User login attempt user_id=1062
+2026-02-26 13:00:46 INFO auth-service User login attempt user_id=1048
+2026-02-26 12:38:49 INFO auth-service User login attempt user_id=1182
+2026-02-26 14:13:21 INFO auth-service User login attempt user_id=1041
+2026-02-26 12:47:09 INFO auth-service User login attempt user_id=1004
+2026-02-26 13:56:53 INFO auth-service User login attempt user_id=1105
+2026-02-26 14:07:44 INFO auth-service User login attempt user_id=1057
+2026-02-26 13:09:17 INFO auth-service User login attempt user_id=1118
+2026-02-26 14:32:04 INFO auth-service User login attempt user_id=1094
+2026-02-26 14:32:04 ERROR auth-service Token validation failed
+2026-02-26 14:10:58 INFO auth-service User login attempt user_id=1101
+2026-02-26 13:43:23 INFO auth-service User login attempt user_id=1084
+2026-02-26 12:57:32 INFO auth-service User login attempt user_id=1033
+2026-02-26 14:10:57 INFO auth-service User login attempt user_id=1018
+2026-02-26 13:19:29 INFO auth-service User login attempt user_id=1102
+2026-02-26 13:46:40 INFO auth-service User login attempt user_id=1196
+2026-02-26 13:49:42 INFO auth-service User login attempt user_id=1055
+2026-02-26 13:02:00 INFO auth-service User login attempt user_id=1128
+2026-02-26 13:54:31 INFO auth-service User login attempt user_id=1139
+2026-02-26 14:03:22 INFO auth-service User login attempt user_id=1194
+2026-02-26 13:59:48 INFO auth-service User login attempt user_id=1020
+2026-02-26 13:59:48 ERROR auth-service Token validation failed
+2026-02-26 12:45:54 INFO auth-service User login attempt user_id=1104
+2026-02-26 13:41:51 INFO auth-service User login attempt user_id=1094
+2026-02-26 12:54:54 INFO auth-service User login attempt user_id=1145
+2026-02-26 13:11:03 INFO auth-service User login attempt user_id=1120
+2026-02-26 14:13:34 INFO auth-service User login attempt user_id=1132
+2026-02-26 14:13:34 WARNING auth-service Token nearing expiry
+2026-02-26 13:30:41 INFO auth-service User login attempt user_id=1117
+2026-02-26 12:39:59 INFO auth-service User login attempt user_id=1088
+2026-02-26 13:06:48 INFO auth-service User login attempt user_id=1194
+2026-02-26 13:27:21 INFO auth-service User login attempt user_id=1133
