@@ -103,11 +103,4 @@ logsentry test_logs/real_world
 logsentry /path/to/your/logs
 ```
 
-## Validation checks
-- Correct aggregation of ERROR and WARNING entries (case-insensitive)
-- Robust handling of malformed or noisy log entries
-- Graceful exit when no log files are found
-- Automatic report generation (report.txt)
-- Timestamped backup creation and compression (backups/)
-
----
+The test suite verifies correct aggregation, case-insensitive matching, report generation, and automated backups across all scenarios.
