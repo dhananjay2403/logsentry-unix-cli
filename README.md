@@ -104,3 +104,5 @@ logsentry /path/to/your/logs
 ```
 
 The test suite verifies correct aggregation, case-insensitive matching, report generation, and automated backups across all scenarios.
+
+**Note:** Demo datasets are synthetically generated to mimic real production log formats. No real user or company data is included.
