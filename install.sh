@@ -11,4 +11,3 @@ sudo cp logsentry "$INSTALL_PATH"
 sudo chmod +x "$INSTALL_PATH"
 
 echo "LogSentry installed successfully!"
-echo "Run using: logsentry"
