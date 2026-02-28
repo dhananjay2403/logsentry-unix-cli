@@ -1,13 +1,15 @@
 #!/bin/bash
 
+SCRIPT="./logsentry"
+
 echo ""
 echo "Running LogSentry test suite..."
 echo "--------------------------------"
 
 run_test () {
   echo ""
-  echo "▶ $1"
-  ./log_tool.sh "$2" | grep -E "Log files found|Errors:|Warnings:|No log files found|Process completed"
+  echo "# $1"
+  "$SCRIPT" "$2" | grep -E "Log files found|Errors:|Warnings:|No log files found|Process completed"
 }
 
 run_test "Clean logs test" test_logs/clean
