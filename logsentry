@@ -1,7 +1,81 @@
 #!/bin/bash
 
-# Accept directory argument (default: logs)
-LOG_DIR=${1:-logs}
+# Add Color Support
+# If running in a real terminal - colors enabled
+# If redirecting to file - colors disabled automatically
+if command -v tput >/dev/null && [ -t 1 ]; then
+  RED=$(tput setaf 1)
+  YELLOW=$(tput setaf 3)
+  GREEN=$(tput setaf 2)
+  RESET=$(tput sgr0)
+else
+  RED=""
+  YELLOW=""
+  GREEN=""
+  RESET=""
+fi
+
+
+DETAILS=0
+TOPN=0
+
+usage() {
+  cat <<HELP
+Usage:
+  logsentry [options] [log_directory]
+
+Options:
+  -d, --details            Show matching ERROR/WARNING lines with line numbers
+  -t N, --top-errors N     Show top N most frequent ERROR lines per file
+  -h, --help               Show this help
+
+Notes:
+  [log_directory] is optional; defaults to "logs".
+HELP
+}
+
+
+LOG_DIR="logs"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    -d|--details)
+      DETAILS=1
+      shift
+      ;;
+    -t|--top-errors)
+      if [ -n "${2-}" ] && [[ ! "$2" =~ ^- ]]; then
+        TOPN="$2"
+        shift 2
+      else
+        echo "Error: -t requires a number argument"
+        exit 1
+      fi
+      ;;
+    --top-errors=*)
+      TOPN="${1#*=}"
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      break
+      ;;
+    -*)
+      echo "Unknown option: $1"
+      usage
+      exit 1
+      ;;
+    *)
+      LOG_DIR="$1"
+      shift
+      ;;
+  esac
+done
+
 
 # Check if directory exists
 if [ ! -d "$LOG_DIR" ]; then
@@ -9,7 +83,7 @@ if [ ! -d "$LOG_DIR" ]; then
   exit 1
 fi
 
-# Safety Check: Ensure logs exist
+# Safety Check (Ensure logs exist)
 if ! ls "$LOG_DIR"/*.log 1> /dev/null 2>&1; then
   echo "No log files found in directory: $LOG_DIR"
   exit 1
@@ -36,6 +110,7 @@ echo "Log files found: $log_count"
 echo ""
 echo "Per-file analysis:"
 echo "-------------------"
+echo ""
 
 total_errors=0
 total_warnings=0
@@ -46,27 +121,54 @@ for logfile in "$LOG_DIR"/*.log; do
   file_errors=$(grep -i "ERROR" "$logfile" 2>/dev/null | wc -l | xargs)
   file_warnings=$(grep -i "WARNING" "$logfile" 2>/dev/null | wc -l | xargs)
 
-  echo "$filename → Errors: $file_errors Warnings: $file_warnings"
+  echo "$filename → Errors: ${RED}$file_errors${RESET} Warnings: ${YELLOW}$file_warnings${RESET}"
 
   total_errors=$((total_errors + file_errors))
   total_warnings=$((total_warnings + file_warnings))
+
+  # If user requested details, show the exact lines with line nos.
+  if [ "$DETAILS" -eq 1 ]; then
+    if [ "$file_errors" -gt 0 ]; then
+      echo "  --- ERROR lines (file: $filename)"
+      grep -in "ERROR" "$logfile" 2>/dev/null | sed 's/^/    /'
+    fi
+
+    echo ""
+
+    if [ "$file_warnings" -gt 0 ]; then
+      echo "  --- WARNING lines (file: $filename)"
+      grep -in "WARNING" "$logfile" 2>/dev/null | sed 's/^/    /'
+    fi
+  fi
+
+  echo ""
+
+  # If user requested top errors, show N most frequent ERROR lines
+  if [ "${TOPN:-0}" -gt 0 ]; then
+    echo "  --- Top ${TOPN} ERROR lines (frequency) for $filename:"
+
+    grep -i "ERROR" "$logfile" 2>/dev/null \
+      | sed 's/^[[:space:]]*//' \
+      | sort \
+      | uniq -c \
+      | sort -nr \
+      | head -n "$TOPN" \
+      | sed 's/^/    /'
+  fi
+
 done
 
 
 # Count ERROR lines
-# error_count=$(grep -i "ERROR" "$LOG_DIR"/*.log 2>/dev/null | wc -l | xargs)         # previously
 error_count=$total_errors
 
-
 # Count WARNING lines
-# warning_count=$(grep -i "WARNING" "$LOG_DIR"/*.log 2>/dev/null | wc -l | xargs)         # previously
 warning_count=$total_warnings
-
 
 echo ""
 echo "Total Summary:"
-echo "Errors: $error_count"
-echo "Warnings: $warning_count"
+echo "Errors: ${RED}$error_count${RESET}"
+echo "Warnings: ${YELLOW}$warning_count${RESET}"
 
 
 # Generate report
@@ -98,4 +200,4 @@ tar -czf "$backup_dir.tar.gz" "$backup_dir"
 echo "Backup created at: $backup_dir"
 echo "Compressed backup: $backup_dir.tar.gz"
 echo ""
-echo "Process completed successfully!"
+echo "${GREEN}Process completed successfully!${RESET}"
