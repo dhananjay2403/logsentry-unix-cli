@@ -35,9 +35,10 @@ HELP
 }
 
 
-LOG_DIR="logs"
-REPORT_DIR="reports"
-BACKUP_ROOT="backups"
+# If variable exists - use it. Otherwise fallback to default.
+LOG_DIR="${LOG_DIR:-logs}"
+REPORT_DIR="${REPORT_DIR:-reports}"
+BACKUP_ROOT="${BACKUP_ROOT:-backups}"
 
 while [ $# -gt 0 ]; do
   case "$1" in
