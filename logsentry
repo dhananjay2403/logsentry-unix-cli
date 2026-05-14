@@ -36,6 +36,8 @@ HELP
 
 
 LOG_DIR="logs"
+REPORT_DIR="reports"
+BACKUP_ROOT="backups"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -88,6 +90,10 @@ if ! ls "$LOG_DIR"/*.log 1> /dev/null 2>&1; then
   echo "No log files found in directory: $LOG_DIR"
   exit 1
 fi
+
+# Create output directories if they don't exist
+mkdir -p "$REPORT_DIR"
+mkdir -p "$BACKUP_ROOT"
 
 
 # CLI Header
@@ -174,21 +180,23 @@ echo "Warnings: ${YELLOW}$warning_count${RESET}"
 # Generate report
 timestamp=$(date +"%Y-%m-%d_%H-%M-%S")
 
-echo "" > report.txt
-echo "Log Analysis Report" >> report.txt
-echo "Generated at: $timestamp" >> report.txt
-echo "Directory analyzed: $LOG_DIR" >> report.txt
-echo "--------------------------------" >> report.txt
-echo "Log files analyzed: $log_count" >> report.txt
-echo "Errors: $error_count" >> report.txt
-echo "Warnings: $warning_count" >> report.txt
+REPORT_FILE="$REPORT_DIR/report.txt"
+echo "" > "$REPORT_FILE"
+
+echo "Log Analysis Report" >> "$REPORT_FILE"
+echo "Generated at: $timestamp" >> "$REPORT_FILE"
+echo "Directory analyzed: $LOG_DIR" >> "$REPORT_FILE"
+echo "--------------------------------" >> "$REPORT_FILE"
+echo "Log files analyzed: $log_count" >> "$REPORT_FILE"
+echo "Errors: $error_count" >> "$REPORT_FILE"
+echo "Warnings: $warning_count" >> "$REPORT_FILE"
 
 echo ""
-echo "Report generated: report.txt"
+echo "Report generated: $REPORT_FILE"
 
 
 # Create backup directory
-backup_dir="backups/$timestamp"
+backup_dir="$BACKUP_ROOT/$timestamp"
 mkdir -p "$backup_dir"
 
 # Copy log files to backup directory

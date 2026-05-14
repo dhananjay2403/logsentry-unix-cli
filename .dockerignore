@@ -7,6 +7,8 @@ Logsentry Videos & SS/
 
 report.txt
 
+reports/
+
 *.tar.gz
 
 Dockerfile.old
