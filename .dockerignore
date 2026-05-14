@@ -1,0 +1,16 @@
+.git
+.gitignore
+
+backups/
+screenshots/
+Logsentry Videos & SS/
+
+report.txt
+
+*.tar.gz
+
+Dockerfile.old
+
+README-assets/
+
+.DS_Store
