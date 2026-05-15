@@ -1,7 +1,7 @@
 <p align="center">
   <h1 align="center">LogSentry Unix CLI</h1>
   <p align="center">
-    A reusable Bash CLI for multi-service log analysis, reporting, and automated backups.
+    A reusable Bash CLI for Unix log analysis, reporting, automated backups, and containerized execution.
   </p>
 </p>
 
@@ -21,11 +21,51 @@ logsentry
 logsentry /path/to/logs
 ```
 
-## Usage:
+---
+
+## Docker Usage
+
+Build the Docker image:
+
+```bash
+docker build -t logsentry:1.3 .
+```
+
+Create host-mounted runtime directories:
+
+```bash
+mkdir -p host_logs
+mkdir -p host_reports
+mkdir -p host_backups
+```
+
+Copy sample logs:
+
+```bash
+cp logs/*.log host_logs/
+```
+
+Run the container:
+
+```bash
+docker run \
+  -v $(pwd)/host_logs:/data/logs \
+  -v $(pwd)/host_reports:/data/reports \
+  -v $(pwd)/host_backups:/data/backups \
+  logsentry:1.3
+```
+
+Generated reports and compressed backups persist on the host machine through Docker bind mounts.
+
+---
+
+## Usage
 
 ```bash
 logsentry test_logs/real_world
 ```
+
+---
 
 ## Quick options:
 
@@ -34,28 +74,21 @@ logsentry -h                          # show help
 logsentry -d test_logs/mixed_case     # show matching ERROR/WARNING lines with line numbers
 logsentry -t 3 test_logs/real_world   # show top 3 most frequent ERROR lines per file
 ```
+---
 
 ## Features
 
 - Per-file log analysis with case-insensitive detection of ERROR and WARNING.
-- Per-log insights (counts per file) for faster debugging.
-    -d / --details: show matching ERROR/WARNING lines with line numbers.
-    -t N / --top-errors N: show top N most frequent ERROR lines per file.
-    -h / --help: compact usage & flags.
-- Aggregated summary reporting across multi-service log directories.
+- Per-log insights for faster debugging and issue tracing.
+- Aggregated summary reporting across production-like log datasets.
 - Timestamped report generation for audit-friendly traceability.
-- Automated backup snapshots with .tar.gz compression.
+- Automated backup snapshots with `.tar.gz` compression.
+- Dockerized runtime with bind-mounted persistent reports and backup storage.
 - Graceful failure handling for empty or invalid log directories.
-- Colorized output for Errors (red), Warnings (yellow), and Success (green).
+- Colorized CLI output for Errors (red), Warnings (yellow), and Success (green).
 - Structured test suite covering isolated and production-like scenarios.
 
-
-## Tech Stack
-
-- Bash
-- Unix CLI tools (grep, wc, tar, cp, sed, sort, uniq)
-- Git
-
+---
 
 ## Screenshots
 
@@ -88,8 +121,8 @@ logsentry -t 3 test_logs/real_world   # show top 3 most frequent ERROR lines per
 
   <tr>
     <td align="center"><b>Generated Report</b></td>
-    <td align="center"><b></b>Backup Artifacts (backups/)</td>
-    <td align="center"><b>Project Structure</b></td>
+    <td align="center"><b>Persistent Backup Artifacts</b></td>
+    <td align="center"><b>Docker Runtime Persistence</b></td>
   </tr>
   <tr>
     <td align="center">
@@ -102,13 +135,13 @@ logsentry -t 3 test_logs/real_world   # show top 3 most frequent ERROR lines per
       <img src="screenshots/backup_example.jpg"
            width="100%"
            style="border:1px solid #ccc; border-radius:6px;"
-           alt="Help flags output" />
+           alt="Backup artifacts example" />
     </td>
     <td align="center">
-      <img src="screenshots/project_structure.jpg"
+      <img src="screenshots/docker_runtime.jpg"
            width="100%"
            style="border:1px solid #ccc; border-radius:6px;"
-           alt="Project structure" />
+           alt="Docker runtime persistence" />
     </td>
   </tr>
 
@@ -122,18 +155,28 @@ logsentry -t 3 test_logs/real_world   # show top 3 most frequent ERROR lines per
       <img src="screenshots/logsentry_help.jpg"
            width="60%"
            style="border:1px solid #ccc; border-radius:6px;"
-           alt="Backup artifacts example" />
+           alt="Help flags output" />
     </td>
   </tr>
 </table>
 
 ---
 
+## Tech Stack
+
+- Bash
+- Unix CLI tools (`grep`, `wc`, `tar`, `cp`, `sed`, `sort`, `uniq`)
+- Docker
+- Git
+
+---
+
+
 ## Testing
 
-This project includes an automated test runner and structured test fixtures to validate behavior across isolated and real-world scenarios.
+This project includes an automated test runner and structured test fixtures to validate behavior across isolated and production-like scenarios.
 
-### Run full test suite
+### Run Full Test Suite
 
 ```bash
 chmod +x run_tests.sh
@@ -142,23 +185,26 @@ chmod +x run_tests.sh
 
 Scenarios included:
 
-- test_logs/clean — clean logs (no errors)
-- test_logs/errors — error-heavy logs
-- test_logs/warnings — warning-heavy logs (if present)
-- test_logs/malformed — noisy / malformed logs
-- test_logs/real_world — combined production-like dataset
-- test_logs/empty — empty directory (graceful failure)
+- `test_logs/clean` — clean logs (no errors)
+- `test_logs/errors` — error-heavy logs
+- `test_logs/warnings` — warning-heavy logs
+- `test_logs/malformed` — noisy / malformed logs
+- `test_logs/real_world` — production-like combined dataset
+- `test_logs/empty` — empty directory (graceful failure)
 
-You can also test specific datasets (examples):
+You can also test specific datasets:
+
 ```bash
 logsentry test_logs/malformed
 logsentry -d test_logs/real_world
 logsentry -t 5 test_logs/mixed_case
 ```
 
-What the tests validate:
+### What the tests validate
+
 - Correct aggregation of ERROR and WARNING entries (case-insensitive)
 - Robust handling of malformed or noisy log entries
-- Graceful exit when no .log files are found
-- Automatic report generation (report.txt)
-- Timestamped backup creation and compression (backups/)
+- Graceful exit when no `.log` files are found
+- Automatic report generation
+- Timestamped backup creation and compression
+- Docker-compatible runtime behavior with persistent mounted storage
