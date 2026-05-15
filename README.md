@@ -25,6 +25,16 @@ logsentry /path/to/logs
 
 ## Docker Usage
 
+### Pull from Docker Hub
+
+```bash
+docker pull dhananjaytiwari/logsentry:1.3
+```
+
+---
+
+### Build Locally
+
 Build the Docker image:
 
 ```bash
