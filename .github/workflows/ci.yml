@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show ShellCheck version
+        run: shellcheck --version
+      - name: Lint every shell script
+        run: shellcheck -S style logsentry install.sh uninstall.sh scripts/*.sh tests/*.sh
+
+  test:
+    name: Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show bash version
+        run: bash --version
+      - name: Run test suite
+        run: ./tests/test_logsentry.sh
+      - name: Regenerate demo logs (checks macOS/Linux date portability)
+        run: ./scripts/generate_demo_logs.sh "$RUNNER_TEMP/demo_logs"
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t logsentry:ci .
+      - name: Run the CLI inside the container
+        run: |
+          mkdir -p ci-out/reports ci-out/backups
+          docker run --rm \
+            -v "$PWD/logs:/data/logs" \
+            -v "$PWD/ci-out/reports:/data/reports" \
+            -v "$PWD/ci-out/backups:/data/backups" \
+            logsentry:ci | tee ci-output.txt
+          grep -q "Process completed successfully" ci-output.txt
+          test -f ci-out/reports/report.txt

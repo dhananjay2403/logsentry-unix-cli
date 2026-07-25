@@ -1,0 +1,5 @@
+2026-03-01 10:00:00 INFO API service started
+2026-03-01 10:00:05 ERROR Failed to connect to upstream
+2026-03-01 10:00:05 ERROR Failed to connect to upstream
+2026-03-01 10:00:09 ERROR Request timed out after 30s
+2026-03-01 10:00:11 INFO Retry scheduled

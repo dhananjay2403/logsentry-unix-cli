@@ -1,9 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# logsentry - analyse a directory of log files, report ERROR/WARNING counts,
+# write a summary report, and archive the logs.
+#
+# Portability: written for bash 3.2 (the version macOS ships) and POSIX tools,
+# so the same script runs unchanged on macOS and Linux.
 
-# Add Color Support
-# If running in a real terminal - colors enabled
-# If redirecting to file - colors disabled automatically
-if command -v tput >/dev/null && [ -t 1 ]; then
+set -euo pipefail
+
+VERSION="1.4.0"
+
+# Colors only when writing to a real terminal, so redirected output stays clean.
+if command -v tput >/dev/null 2>&1 && [ -t 1 ]; then
   RED=$(tput setaf 1)
   YELLOW=$(tput setaf 3)
   GREEN=$(tput setaf 2)
@@ -15,6 +23,10 @@ else
   RESET=""
 fi
 
+# If the variable is already set, use it. Otherwise fall back to the default.
+LOG_DIR="${LOG_DIR:-logs}"
+REPORT_DIR="${REPORT_DIR:-reports}"
+BACKUP_ROOT="${BACKUP_ROOT:-backups}"
 
 DETAILS=0
 TOPN=0
@@ -26,40 +38,66 @@ Usage:
 
 Options:
   -d, --details            Show matching ERROR/WARNING lines with line numbers
-  -t N, --top-errors N     Show top N most frequent ERROR lines per file
+  -t N, --top-errors N     Show the N most frequent ERROR lines per file
+      --top-errors=N       Same as -t N
+  -V, --version            Print the version and exit
   -h, --help               Show this help
 
+Environment:
+  LOG_DIR                  Log directory to analyse (default: logs)
+  REPORT_DIR               Where the report is written (default: reports)
+  BACKUP_ROOT              Where backup archives are written (default: backups)
+
 Notes:
-  [log_directory] is optional; defaults to "logs".
+  [log_directory] is optional and overrides LOG_DIR.
+  Exit status: 0 on success, 1 on a usage or input error.
 HELP
 }
 
+die() {
+  printf 'logsentry: %s\n' "$1" >&2
+  exit 1
+}
 
-# If variable exists - use it. Otherwise fallback to default.
-LOG_DIR="${LOG_DIR:-logs}"
-REPORT_DIR="${REPORT_DIR:-reports}"
-BACKUP_ROOT="${BACKUP_ROOT:-backups}"
+is_number() {
+  case "$1" in
+    '' | *[!0-9]*) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
+# grep -c prints 0 but exits 1 when there are no matches, so failures are
+# tolerated here and an empty result falls back to 0.
+count_matches() {
+  local n
+  n=$(grep -ic "$1" "$2" 2>/dev/null || true)
+  printf '%s' "${n:-0}"
+}
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    -d|--details)
+    -d | --details)
       DETAILS=1
       shift
       ;;
-    -t|--top-errors)
-      if [ -n "${2-}" ] && [[ ! "$2" =~ ^- ]]; then
-        TOPN="$2"
-        shift 2
-      else
-        echo "Error: -t requires a number argument"
-        exit 1
+    -t | --top-errors)
+      if [ -z "${2-}" ] || [[ "$2" == -* ]]; then
+        die "$1 requires a number argument (e.g. -t 3)"
       fi
+      is_number "$2" || die "$1 expects a positive number, got: $2"
+      TOPN="$2"
+      shift 2
       ;;
     --top-errors=*)
       TOPN="${1#*=}"
+      is_number "$TOPN" || die "--top-errors expects a positive number, got: $TOPN"
       shift
       ;;
-    -h|--help)
+    -V | --version)
+      printf 'logsentry %s\n' "$VERSION"
+      exit 0
+      ;;
+    -h | --help)
       usage
       exit 0
       ;;
@@ -68,8 +106,8 @@ while [ $# -gt 0 ]; do
       break
       ;;
     -*)
-      echo "Unknown option: $1"
-      usage
+      printf 'logsentry: unknown option: %s\n' "$1" >&2
+      usage >&2
       exit 1
       ;;
     *)
@@ -79,134 +117,106 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+[ -d "$LOG_DIR" ] || die "directory not found: $LOG_DIR"
 
-# Check if directory exists
-if [ ! -d "$LOG_DIR" ]; then
-  echo "Directory not found: $LOG_DIR"
-  exit 1
-fi
+# Collect the log files up front: one glob, reused for counting, analysis and
+# the archive (no `ls` parsing, and filenames with spaces stay intact).
+logfiles=("$LOG_DIR"/*.log)
+[ -e "${logfiles[0]}" ] || die "no log files found in directory: $LOG_DIR"
+log_count=${#logfiles[@]}
 
-# Safety Check (Ensure logs exist)
-if ! ls "$LOG_DIR"/*.log 1> /dev/null 2>&1; then
-  echo "No log files found in directory: $LOG_DIR"
-  exit 1
-fi
-
-# Create output directories if they don't exist
 mkdir -p "$REPORT_DIR"
 mkdir -p "$BACKUP_ROOT"
 
+printf '\n'
+printf '================================\n'
+printf '   LogSentry Unix CLI Tool\n'
+printf '================================\n'
+printf '\n'
+printf 'Starting Log Analyzer...\n'
+printf -- '--------------------------------\n'
+printf 'Log files found: %s\n' "$log_count"
 
-# CLI Header
-echo ""
-echo "================================"
-echo "   LogSentry Unix CLI Tool"
-echo "================================"
-echo ""
-
-echo "Starting Log Analyzer..."
-echo "--------------------------------"
-
-
-# Count no. of log files
-log_count=$(ls "$LOG_DIR"/*.log 2>/dev/null | wc -l | xargs)
-echo "Log files found: $log_count"
-
-
-# Per-file analysis
-echo ""
-echo "Per-file analysis:"
-echo "-------------------"
-echo ""
+printf '\nPer-file analysis:\n'
+printf -- '-------------------\n\n'
 
 total_errors=0
 total_warnings=0
 
-for logfile in "$LOG_DIR"/*.log; do
+for logfile in "${logfiles[@]}"; do
   filename=$(basename "$logfile")
 
-  file_errors=$(grep -i "ERROR" "$logfile" 2>/dev/null | wc -l | xargs)
-  file_warnings=$(grep -i "WARNING" "$logfile" 2>/dev/null | wc -l | xargs)
+  file_errors=$(count_matches "ERROR" "$logfile")
+  file_warnings=$(count_matches "WARNING" "$logfile")
 
-  echo "$filename → Errors: ${RED}$file_errors${RESET} Warnings: ${YELLOW}$file_warnings${RESET}"
+  printf '%s → Errors: %s%s%s Warnings: %s%s%s\n' \
+    "$filename" "$RED" "$file_errors" "$RESET" "$YELLOW" "$file_warnings" "$RESET"
 
   total_errors=$((total_errors + file_errors))
   total_warnings=$((total_warnings + file_warnings))
 
-  # If user requested details, show the exact lines with line nos.
+  # If the user asked for details, show the exact lines with line numbers.
   if [ "$DETAILS" -eq 1 ]; then
     if [ "$file_errors" -gt 0 ]; then
-      echo "  --- ERROR lines (file: $filename)"
-      grep -in "ERROR" "$logfile" 2>/dev/null | sed 's/^/    /'
+      printf '  --- ERROR lines (file: %s)\n' "$filename"
+      grep -in "ERROR" "$logfile" | sed 's/^/    /' || true
     fi
 
-    echo ""
+    printf '\n'
 
     if [ "$file_warnings" -gt 0 ]; then
-      echo "  --- WARNING lines (file: $filename)"
-      grep -in "WARNING" "$logfile" 2>/dev/null | sed 's/^/    /'
+      printf '  --- WARNING lines (file: %s)\n' "$filename"
+      grep -in "WARNING" "$logfile" | sed 's/^/    /' || true
     fi
   fi
 
-  echo ""
+  printf '\n'
 
-  # If user requested top errors, show N most frequent ERROR lines
-  if [ "${TOPN:-0}" -gt 0 ]; then
-    echo "  --- Top ${TOPN} ERROR lines (frequency) for $filename:"
+  # If the user asked for top errors, rank the N most repeated ERROR lines.
+  # `head` closing the pipe early is expected, hence the `|| true`.
+  if [ "$TOPN" -gt 0 ]; then
+    printf '  --- Top %s ERROR lines (frequency) for %s:\n' "$TOPN" "$filename"
 
-    grep -i "ERROR" "$logfile" 2>/dev/null \
-      | sed 's/^[[:space:]]*//' \
-      | sort \
-      | uniq -c \
-      | sort -nr \
-      | head -n "$TOPN" \
-      | sed 's/^/    /'
+    grep -i "ERROR" "$logfile" 2>/dev/null |
+      sed 's/^[[:space:]]*//' |
+      sort |
+      uniq -c |
+      sort -nr |
+      head -n "$TOPN" |
+      sed 's/^/    /' || true
   fi
-
 done
 
+printf '\nTotal Summary:\n'
+printf 'Errors: %s%s%s\n' "$RED" "$total_errors" "$RESET"
+printf 'Warnings: %s%s%s\n' "$YELLOW" "$total_warnings" "$RESET"
 
-# Count ERROR lines
-error_count=$total_errors
-
-# Count WARNING lines
-warning_count=$total_warnings
-
-echo ""
-echo "Total Summary:"
-echo "Errors: ${RED}$error_count${RESET}"
-echo "Warnings: ${YELLOW}$warning_count${RESET}"
-
-
-# Generate report
 timestamp=$(date +"%Y-%m-%d_%H-%M-%S")
 
 REPORT_FILE="$REPORT_DIR/report.txt"
-echo "" > "$REPORT_FILE"
+{
+  printf 'Log Analysis Report\n'
+  printf 'Generated at: %s\n' "$timestamp"
+  printf 'Directory analyzed: %s\n' "$LOG_DIR"
+  printf -- '--------------------------------\n'
+  printf 'Log files analyzed: %s\n' "$log_count"
+  printf 'Errors: %s\n' "$total_errors"
+  printf 'Warnings: %s\n' "$total_warnings"
+} > "$REPORT_FILE"
 
-echo "Log Analysis Report" >> "$REPORT_FILE"
-echo "Generated at: $timestamp" >> "$REPORT_FILE"
-echo "Directory analyzed: $LOG_DIR" >> "$REPORT_FILE"
-echo "--------------------------------" >> "$REPORT_FILE"
-echo "Log files analyzed: $log_count" >> "$REPORT_FILE"
-echo "Errors: $error_count" >> "$REPORT_FILE"
-echo "Warnings: $warning_count" >> "$REPORT_FILE"
+printf '\nReport generated: %s\n' "$REPORT_FILE"
 
-echo ""
-echo "Report generated: $REPORT_FILE"
+# Archive the log files with `tar -C` so the members are plain file names
+# (api.log), not the full path the logs happened to live under. Archiving
+# straight from the source also avoids staging a second copy on disk.
+archive="$BACKUP_ROOT/$timestamp.tar.gz"
 
+basenames=()
+for logfile in "${logfiles[@]}"; do
+  basenames+=("$(basename "$logfile")")
+done
 
-# Create backup directory
-backup_dir="$BACKUP_ROOT/$timestamp"
-mkdir -p "$backup_dir"
+tar -czf "$archive" -C "$LOG_DIR" "${basenames[@]}"
 
-# Copy log files to backup directory
-cp "$LOG_DIR"/*.log "$backup_dir"
-
-# Compress backup
-tar -czf "$backup_dir.tar.gz" "$backup_dir"
-
-echo "Backup created at: $backup_dir"
-echo "Compressed backup: $backup_dir.tar.gz"
-echo ""
-echo "${GREEN}Process completed successfully!${RESET}"
+printf 'Backup archive: %s\n' "$archive"
+printf '\n%sProcess completed successfully!%s\n' "$GREEN" "$RESET"

@@ -1,0 +1,7 @@
+### junk banner ###
+this line has no timestamp and no level
+2026-03-01 13:00:00 INFO Something ordinary happened
+!!!!!!!!
+2026-03-01 13:00:01 ERROR Disk full on /var/log
+2026-03-01 13:00:02 WARNING Disk almost full on /var/log
+
