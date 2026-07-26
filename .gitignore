@@ -1,25 +1,23 @@
 # Runtime artifacts
 backups/
+reports/
+host_logs/
+host_reports/
+host_backups/
 *.tar.gz
 report.txt
 
-# macOS system files
+# macOS
 .DS_Store
 
-# Not ignoring Logs generated during testing
-
-# Editor files
+# Editor
 .vscode/
-
-# Temporary files
 *.swp
 *.swo
 *~
 
+# Personal notes
 questions.txt
 
-demo_video_and_ss
-
-host_logs/
-host_reports/
-host_backups/
+# Demo assets
+demo_video_and_ss/

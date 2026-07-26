@@ -1,0 +1,10 @@
+2026-03-01 14:00:00 INFO error_rate=0 steady
+2026-03-01 14:00:01 INFO ErrorHandler initialized
+2026-03-01 14:00:02 INFO 0 errors found in last hour
+2026-03-01 14:00:03 INFO warning_count=0
+2026-03-01 14:00:04 ERROR Payment gateway unreachable
+2026-03-01 14:00:05 level=error msg=timeout
+2026-03-01 14:00:06 WARN Disk almost full
+2026-03-01 14:00:07 FATAL Out of memory
+2026-03-01 14:00:08 CRITICAL Replica lag high
+2026-03-01 14:00:09 WARNING Retry scheduled

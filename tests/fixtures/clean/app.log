@@ -1,0 +1,5 @@
+2026-03-01 09:00:00 INFO Application starting
+2026-03-01 09:00:02 INFO Configuration loaded
+2026-03-01 09:00:05 INFO Database connection established
+2026-03-01 09:00:09 INFO Listening on port 8080
+2026-03-01 09:01:00 INFO Health check passed

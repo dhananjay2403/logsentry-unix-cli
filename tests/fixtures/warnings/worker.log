@@ -1,0 +1,5 @@
+2026-03-01 11:00:00 INFO Worker started
+2026-03-01 11:00:10 WARNING Queue depth above threshold
+2026-03-01 11:00:20 WARNING Retrying job 501
+2026-03-01 11:00:30 INFO Job 501 completed
+2026-03-01 11:00:40 WARNING Slow job detected
