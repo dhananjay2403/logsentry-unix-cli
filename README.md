@@ -1,7 +1,8 @@
 <p align="center">
-  <h1 align="center">LogSentry Unix CLI</h1>
+  <h1 align="center">LogSentry</h1>
   <p align="center">
-    A reusable Bash CLI for Unix log analysis, reporting, automated backups, and containerized execution.
+    A single-file Bash CLI for triaging directories of log files:
+    per-file ERROR/WARNING counts, ranked errors, JSON output, and compressed backups.
   </p>
   <p align="center">
     <a href="https://github.com/dhananjay2403/logsentry-unix-cli/actions/workflows/ci.yml">
@@ -15,37 +16,119 @@
 
 ---
 
+## Overview
+
+Point LogSentry at a directory of logs and it tells you how many errors and warnings each file
+has, which errors repeat most, and writes a timestamped compressed archive of the logs it analysed.
+
+It is one Bash script with no dependencies beyond standard Unix tools, so it installs by copying
+a single file and runs the same way on macOS (stock bash 3.2), Linux, and inside a small Alpine
+container. Log levels are matched as whole words, so `error_rate=0` is not counted as an error
+and `WARN` is not missed. `--json` and threshold exit codes make it usable from a CI pipeline.
+
+## Features
+
+- Per-file and aggregate ERROR/WARNING counts, with `-d` for matching lines and `-t N` for the
+  most frequent errors.
+- Whole-word level matching: `ERROR`, `ERR`, `FATAL`, `CRITICAL`, `WARN`, `WARNING` count;
+  `error_rate=0`, `ErrorHandler` and `0 errors found` do not.
+- Single-pass POSIX `awk` engine — each file is read once regardless of which flags are used.
+- `--json` output for pipelines, `--fail-on-error N` (exit `2`) to gate CI.
+- Recursive search and custom globs for nested and rotated logs (`-r`, `--pattern`).
+- Timestamped `.tar.gz` backups created under `umask 077`, with `--keep N` retention.
+- Reports with a per-file breakdown, written to a configurable directory.
+- Colour that disables itself when redirected, plus `--no-color` and `NO_COLOR`.
+
 ## Installation
 
 ```bash
-chmod +x install.sh
-./install.sh                        # installs to /usr/local/bin (uses sudo if needed)
-PREFIX="$HOME/.local" ./install.sh  # user-local install, no sudo
+git clone https://github.com/dhananjay2403/logsentry-unix-cli.git
+cd logsentry-unix-cli
+./install.sh                         # /usr/local/bin (uses sudo if needed)
+PREFIX="$HOME/.local" ./install.sh   # user-local, no sudo
 ```
 
-Run from anywhere after install:
+Uninstall with `./uninstall.sh` (pass the same `PREFIX` you installed with).
+
+Or build the Docker image locally:
 
 ```bash
-logsentry
-logsentry /path/to/logs
-logsentry --version
+docker build -t logsentry:1.5 .
 ```
 
-Remove it again with `./uninstall.sh` (pass the same `PREFIX` you installed with).
+> **Not published yet.** A Homebrew tap (`brew install dhananjay2403/tap/logsentry`) and a
+> pre-built Docker Hub image for this version are prepared but not released — the formula and
+> the release steps live in [`packaging/`](packaging/). The published Docker Hub tag
+> (`dhananjaytiwari/logsentry:1.3`) predates the Alpine image and the current engine, so build
+> locally instead until 1.5 is pushed.
 
----
-
-## Docker Usage
-
-### Pull from Docker Hub
+## Quick start
 
 ```bash
-docker pull dhananjaytiwari/logsentry:1.3
+logsentry                    # analyse ./logs
+logsentry /var/log/myapp     # analyse any directory
+logsentry --help
 ```
 
----
+## Examples
 
-### Build Locally
+```bash
+# Show the matching ERROR/WARNING lines with line numbers
+logsentry -d /var/log/myapp
+
+# Rank the three most frequent errors in each file
+logsentry -t 3 /var/log/myapp
+
+# Nested directories and rotated files
+logsentry -r --pattern '*.log*' /var/log/myapp
+
+# Machine-readable output
+logsentry --json /var/log/myapp | jq '.errors'
+logsentry --json /var/log/myapp | jq -r '.results[] | "\(.file) \(.errors)"'
+
+# Fail a CI job when errors reach a threshold
+logsentry -q --fail-on-error 10 /var/log/myapp || echo "error budget exceeded"
+
+# Keep only the five newest backup archives
+logsentry --keep 5 /var/log/myapp
+```
+
+## CLI options
+
+| Option | Description |
+|---|---|
+| `-d`, `--details` | Show matching ERROR/WARNING lines with line numbers |
+| `-t N`, `--top-errors N` | Show the N most frequent ERROR lines per file |
+| `-r`, `--recursive` | Search sub-directories too |
+| `--pattern GLOB` | Which files to analyse (default: `*.log`) |
+| `--json` | Print a JSON summary instead of the human report |
+| `-q`, `--quiet` | Print only the totals |
+| `--no-color` | Disable coloured output (also honours `NO_COLOR`) |
+| `--keep N` | Keep only the N newest backup archives |
+| `--fail-on-error N` | Exit with status `2` when errors reach N |
+| `-V`, `--version` | Print the version |
+| `-h`, `--help` | Show help |
+
+### Environment variables
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `LOG_DIR` | `logs` | Directory to analyse when no argument is given |
+| `REPORT_DIR` | `reports` | Where the summary report is written |
+| `BACKUP_ROOT` | `backups` | Where `.tar.gz` backup archives are written |
+| `NO_COLOR` | unset | Set to any value to disable coloured output |
+
+### Exit status
+
+| Code | Meaning |
+|---|---|
+| `0` | Analysis completed |
+| `1` | Usage error, missing directory, or no matching files found |
+| `2` | Errors reached the `--fail-on-error` threshold |
+
+Exit codes are a CLI's API — they are what let the tool compose with `&&`, `||`, and CI.
+
+## Docker usage
 
 ```bash
 docker build -t logsentry:1.5 .
@@ -59,216 +142,90 @@ docker run --rm --user "$(id -u):$(id -g)" \
   logsentry:1.5
 ```
 
-Reports and compressed backups persist on the host through the bind mounts.
+Reports and archives persist on the host through the bind mounts. The image is Alpine-based and
+runs as a non-root user, so `--user "$(id -u):$(id -g)"` keeps generated files owned by you.
+Alpine ships **busybox awk**, which is why the engine is written in POSIX awk — CI verifies that
+the container and the host produce identical counts.
 
-The image is Alpine-based and runs as a non-root user, so `--user "$(id -u):$(id -g)"`
-keeps generated files owned by you. Alpine ships **busybox awk**, which is why the
-analysis engine is written in POSIX awk — CI verifies that the container and the host
-produce identical counts.
+## Benchmarks
 
----
+<!-- BENCHMARK SUMMARY START -->
 
-## Usage
+Measured with `./scripts/benchmark.sh --full` on Apple M2 (Darwin arm64, bash 3.2.57).
 
-```bash
-logsentry                                              # analyse ./logs
-logsentry tests/fixtures/realistic/microservices_sim   # analyse any directory
-```
+### Performance summary
 
----
-
-## Quick options
-
-```bash
-logsentry -h                                     # show help
-logsentry -V                                     # show version
-logsentry -d tests/fixtures/mixed_case           # show matching ERROR/WARNING lines with line numbers
-logsentry -t 3 tests/fixtures/errors             # show top 3 most frequent ERROR lines per file
-logsentry -r --pattern '*.log*' /var/log/myapp   # search sub-directories, include rotated logs
-logsentry -q logs                                # totals only
-logsentry --keep 5 logs                          # keep only the 5 newest backup archives
-```
-
-### Machine-readable output
-
-```bash
-logsentry --json logs | jq '.errors'
-logsentry --json logs | jq -r '.results[] | "\(.file) \(.errors)"'
-```
-
-`--json` prints a single object — totals, the report and archive paths, and a
-`results` array with per-file counts — and nothing else, so it pipes cleanly.
-
-### Using it as a CI gate
-
-```bash
-logsentry -q --fail-on-error 10 /var/log/myapp || echo "error budget exceeded"
-```
-
-Exit codes are a CLI's API: they are what let a tool compose with `&&`, `||`, and CI.
-
-| Code | Meaning |
+| Metric | Measured |
 |---|---|
-| `0` | Analysis completed |
-| `1` | Usage error, missing directory, or no matching files found |
-| `2` | Errors reached the `--fail-on-error` threshold |
+| Throughput (5M-line benchmark) | 445,632 lines/s |
+| Peak memory | 3.7 MB |
+| Docker image | 20.5MB |
+| Docker image reduction | 81% smaller than the previous `ubuntu:22.04` image |
+| Compression ratio | 90% (278.9 MB of logs to 25.9 MB) |
+| Automated tests | 64 / 64 passing |
+| ShellCheck | zero warnings (`-S style`) |
 
-### Environment variables
+### Scaling
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `LOG_DIR` | `logs` | Directory to analyse when no argument is given |
-| `REPORT_DIR` | `reports` | Where the summary report is written |
-| `BACKUP_ROOT` | `backups` | Where `.tar.gz` backup archives are written |
-| `NO_COLOR` | unset | Set to any value to disable coloured output |
+| Lines | Corpus size | Median time | Throughput | Peak memory |
+|---|---|---|---|---|
+| 100,000 | 5.4 MB | 0.29s | 344,827 lines/s | 3.6 MB |
+| 1,000,000 | 55.1 MB | 2.49s | 401,606 lines/s | 3.6 MB |
+| 5,000,000 | 278.9 MB | 11.22s | 445,632 lines/s | 3.7 MB |
 
----
-
-## Features
-
-- Single-pass POSIX `awk` engine: each file is read once, whatever flags are used.
-- Whole-word level matching — `ERROR`, `ERR`, `FATAL`, `CRITICAL`, `WARN`, `WARNING` are
-  counted; `error_rate=0`, `ErrorHandler` and `0 errors found` are not.
-- Per-file breakdown plus an aggregated summary, with `-d` for matching lines and
-  `-t N` for the most frequent errors.
-- `--json` output for pipelines, and `--fail-on-error N` (exit `2`) to gate CI.
-- Recursive search and custom globs for nested and rotated logs (`-r`, `--pattern`).
-- Report with per-file table, and timestamped `.tar.gz` archives created straight from
-  the source logs under `umask 077`, with `--keep N` retention.
-- Alpine Docker image (20.5 MB), non-root, with bind-mounted reports and backups.
-- Graceful failures with clear messages on stderr and documented exit codes.
-- Colorized output that disables itself when redirected, plus `--no-color` / `NO_COLOR`.
-- Dependency-free test suite (64 assertions) with ShellCheck and Docker checks in CI.
-- Runs unchanged on macOS (bash 3.2), Linux, and Alpine/busybox.
-
----
+_Median of 5 runs per size after a discarded warm-up, end to end (analysis, report,
+archive). Memory stays flat as the corpus grows because the engine streams with awk.
+Method and caveats: [docs/BENCHMARKS.md](docs/BENCHMARKS.md)._
+<!-- BENCHMARK SUMMARY END -->
 
 ## Screenshots
 
 <table>
   <tr>
-    <td align="center"><b>Run Output (summary)</b></td>
-    <td align="center"><b>Run Output (details: -d)</b></td>
-    <td align="center"><b>Run Output (top errors: -t 3)</b></td>
+    <td align="center"><b>Run output</b></td>
+    <td align="center"><b>Top errors (<code>-t 3</code>)</b></td>
+    <td align="center"><b>Generated report</b></td>
   </tr>
   <tr>
-    <td align="center">
-      <img src="screenshots/run_output.jpg"
-           width="100%"
-           style="border:1px solid #ccc; border-radius:6px;"
-           alt="Run output summary" />
-    </td>
-    <td align="center">
-      <img src="screenshots/run_output_details.jpg"
-           width="100%"
-           style="border:1px solid #ccc; border-radius:6px;"
-           alt="Run output details" />
-    </td>
-    <td align="center">
-      <img src="screenshots/run_top_errors.jpg"
-           width="100%"
-           style="border:1px solid #ccc; border-radius:6px;"
-           alt="Top errors output" />
-    </td>
-  </tr>
-
-  <tr>
-    <td align="center"><b>Generated Report</b></td>
-    <td align="center"><b>Persistent Backup Artifacts</b></td>
-    <td align="center"><b>Docker Runtime Persistence</b></td>
-  </tr>
-  <tr>
-    <td align="center">
-      <img src="screenshots/report_view.jpg"
-           width="100%"
-           style="border:1px solid #ccc; border-radius:6px;"
-           alt="Generated report view" />
-    </td>
-    <td align="center">
-      <img src="screenshots/backup_example.jpg"
-           width="100%"
-           style="border:1px solid #ccc; border-radius:6px;"
-           alt="Backup artifacts example" />
-    </td>
-    <td align="center">
-      <img src="screenshots/docker_runtime.jpg"
-           width="100%"
-           style="border:1px solid #ccc; border-radius:6px;"
-           alt="Docker runtime persistence" />
-    </td>
-  </tr>
-
-  <tr>
-    <td colspan="3" align="center">
-      <b>Help / Flags</b>
-    </td>
-  </tr>
-  <tr>
-    <td colspan="3" align="center">
-      <img src="screenshots/logsentry_help.jpg"
-           width="60%"
-           style="border:1px solid #ccc; border-radius:6px;"
-           alt="Help flags output" />
-    </td>
+    <td align="center"><img src="screenshots/run_output.jpg" width="100%" alt="Run output" /></td>
+    <td align="center"><img src="screenshots/run_top_errors.jpg" width="100%" alt="Top errors" /></td>
+    <td align="center"><img src="screenshots/report_view.jpg" width="100%" alt="Generated report" /></td>
   </tr>
 </table>
 
----
+A terminal recording shows the CLI in use better than screenshots do —
+see [docs/demo.md](docs/demo.md) for how it is recorded.
 
-## Tech Stack
+## Development
 
-- Bash (3.2-compatible)
-- Unix CLI tools (`grep`, `sed`, `sort`, `uniq`, `tar`, `date`, `basename`)
-- Docker
-- GitHub Actions, ShellCheck
-- Git
+```
+logsentry              the CLI (one file, no build step)
+install.sh             installer, honours PREFIX
+scripts/               developer tooling: log generators and benchmarks
+tests/                 test runner and fixtures
+docs/                  benchmark method and demo recording notes
+logs/                  example dataset, the default input directory
+```
 
----
-
+The script targets **bash 3.2** so it runs on stock macOS without Homebrew: no associative
+arrays, no `mapfile`, no `${var,,}`. All `awk` is POSIX so the same code runs under BSD awk,
+gawk, mawk and busybox awk.
 
 ## Testing
 
 ```bash
 ./tests/test_logsentry.sh
+shellcheck -S style logsentry install.sh uninstall.sh scripts/*.sh tests/*.sh
 ```
 
-The suite is plain Bash — no framework to install — and every case asserts a real
-value, so it fails loudly when behaviour regresses. It writes reports and archives
-to a temporary directory, never into the repository.
+The suite is plain Bash — no framework to install — and every case asserts a real value, so it
+fails when behaviour regresses. It writes reports and archives to a temporary directory, never
+into the repository. Fixtures live in `tests/fixtures/`, including `tricky/` (`error_rate=0`,
+`WARN`, `FATAL`) which locks in whole-word level matching, and `nested/` for `-r` and `--pattern`.
 
-Fixtures live in `tests/fixtures/`:
+[CI](.github/workflows/ci.yml) runs on every push: ShellCheck, the test suite on Ubuntu and
+macOS, and a Docker build whose container output is diffed against the host run.
 
-| Fixture | Contents |
-|---|---|
-| `clean/` | Only INFO lines (0 errors, 0 warnings) |
-| `errors/` | Two files, 5 ERROR lines total, including a repeated line for `-t` |
-| `warnings/` | 3 WARNING lines |
-| `mixed_case/` | `error` / `Error` / `ERROR` and `warning` / `WARNING` |
-| `malformed/` | Junk and unstructured lines around 1 ERROR and 1 WARNING |
-| `tricky/` | `error_rate=0`, `ErrorHandler`, `0 errors found`, `WARN`, `FATAL`, `CRITICAL` — locks whole-word level matching in |
-| `nested/` | Sub-directory and a rotated `.log.1` file, for `-r` and `--pattern` |
-| `empty/` | No `.log` files (graceful-failure path) |
-| `realistic/` | Apache access log, JSON lines, multi-service logs, noisy log — regenerate with `./scripts/generate_demo_logs.sh` |
+## License
 
-### What the tests validate
-
-- Per-file and aggregate ERROR/WARNING counts, including mixed-case levels
-- Whole-word level matching (`error_rate=0` not counted, `WARN` and `FATAL` counted)
-- Filenames containing spaces
-- `LOG_DIR`, `REPORT_DIR`, and `BACKUP_ROOT` overrides
-- Exit code `1` with a clear message for a missing directory, a directory with no
-  matching files, a non-numeric `-t`, and an unknown option
-- Exit code `2` at the `--fail-on-error` threshold, and `0` below it
-- `-d`, `-t N`, `--top-errors=N`, `-r`, `--pattern`, `--quiet`, `--no-color`,
-  `--help`, and `--version` output
-- `--json` field values, and that the document parses as JSON
-- Report contents including the per-file table, that archives contain plain file names
-  with no staging copy left behind, and that `--keep N` prunes older archives
-
-### Continuous integration
-
-[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push and pull request:
-
-- **ShellCheck** (`-S style`) over every script — zero findings
-- **Tests** on `ubuntu-latest` and `macos-latest` (bash 5 and bash 3.2)
-- **Docker** build plus a container run against the sample logs
+[MIT](LICENSE)

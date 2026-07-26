@@ -22,18 +22,30 @@ including the automatic backup on every run.
 - `--keep N` — keep only the N newest backup archives.
 - Backups now report raw size, archive size, and the compression ratio.
 - Reports include a per-file table and the total number of lines analysed.
+- `scripts/benchmark.sh` — reproducible benchmark harness (median of repeated runs,
+  validated timings) that writes its results into `docs/BENCHMARKS.md` and the README.
+  No published figure is typed in by hand.
+- `scripts/generate_logs.sh` — deterministic corpus generator for the benchmarks; the
+  same command produces a byte-identical corpus on any machine.
+- `docs/BENCHMARKS.md` — what each metric measures, how, how to reproduce it, and its caveats.
+- `docs/demo.md` — the exact asciinema/agg workflow for recording the demo GIF.
+- `packaging/logsentry.rb` and `packaging/README.md` — Homebrew formula and tap instructions.
 
 ### Changed
 
 - Analysis now makes a **single pass per file** with a POSIX `awk` program instead of
   two to four `grep` / `sort` / `uniq` / `wc` passes.
+- The awk engine rejects non-matching lines with a cheap case-class test before doing any
+  case folding, since `tolower()` on every line was the hot path. Output is unchanged;
+  reproduce the speedup with `BASELINE_REF=bcd27f5 ./scripts/benchmark.sh`.
 - Log levels are matched as **whole words**. `error_rate=0`, `ErrorHandler` and
   `0 errors found` are no longer counted as errors, and `WARN`, `FATAL` and `CRITICAL`
   are now recognised alongside `ERROR` and `WARNING`.
 - Backup archives are created under `umask 077`, so they are not world-readable.
 - Docker image moved from `ubuntu:22.04` to `alpine:3.20`, runs as a non-root user,
-  and installs only the CLI: **107 MB → 20.5 MB** (measured with `docker images`).
-  Bind-mounted runs should pass `--user "$(id -u):$(id -g)"`.
+  and installs only the CLI. Sizes are measured by `scripts/benchmark.sh`; see
+  [docs/BENCHMARKS.md](docs/BENCHMARKS.md). Bind-mounted runs should pass
+  `--user "$(id -u):$(id -g)"`.
 
 ### Fixed
 
@@ -64,7 +76,8 @@ including the automatic backup on every run.
 
 - `set -euo pipefail` throughout; file collection uses a glob instead of parsing `ls`.
 - `scripts/generate_demo_logs.sh` works with GNU `date` as well as BSD `date`.
-- Docker build context reduced from ~49.5 MB to ~60 KB via `.dockerignore`.
+- Docker build context reduced to just the CLI by excluding demo media, PDFs and
+  fixtures in `.dockerignore`.
 
 ## [1.3.0] - 2026-05-15
 

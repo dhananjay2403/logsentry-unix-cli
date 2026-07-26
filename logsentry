@@ -3,8 +3,7 @@
 # logsentry - analyse a directory of log files, report ERROR/WARNING counts,
 # write a summary report, and archive the logs.
 #
-# Portability: written for bash 3.2 (the version macOS ships) and POSIX tools,
-# so the same script runs unchanged on macOS, Linux and Alpine/busybox.
+# Targets bash 3.2 (what macOS ships) and POSIX tools only.
 
 set -euo pipefail
 
@@ -25,13 +24,11 @@ RECURSIVE=0
 PATTERN="*.log"
 USE_COLOR=1
 
-# Levels are matched as whole words, so "error_rate=0" and "ErrorHandler" are
-# not errors, while WARN, FATAL and CRITICAL are recognised.
+# Whole-word matching, so "error_rate=0" is not an error and WARN is not missed.
 ERROR_RE='(^|[^a-z0-9_])(error|err|fatal|critical)([^a-z0-9_]|$)'
 WARN_RE='(^|[^a-z0-9_])(warn|warning)([^a-z0-9_]|$)'
 
-# One pass over each file produces everything we need. The tags let the shell
-# pick the pieces apart afterwards without re-reading the log:
+# One pass per file, tagged so the shell can split it without re-reading:
 #   C <errors> <warnings> <lines>   counts (always)
 #   E <lineno>:<line>               an ERROR line   (only with --details)
 #   W <lineno>:<line>               a WARNING line  (only with --details)
@@ -41,6 +38,10 @@ WARN_RE='(^|[^a-z0-9_])(warn|warning)([^a-z0-9_]|$)'
 AWK_ENGINE='
 {
   lines++
+  # Skip case folding for lines that cannot match. Invariant: every alternative
+  # here is a substring of a level word above, so this never rejects a match.
+  if ($0 !~ /[Ee][Rr][Rr]|[Ff][Aa][Tt][Aa][Ll]|[Cc][Rr][Ii][Tt]|[Ww][Aa][Rr][Nn]/)
+    next
   low = tolower($0)
   if (low ~ error_re) {
     errors++
@@ -121,6 +122,22 @@ require_value() { # flag value
 
 json_escape() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+# A right-aligned, coloured count. The padding happens inside the colour codes
+# on purpose: escape sequences count towards printf's field width and would
+# otherwise skew the columns. With colour off the codes are empty strings, so
+# the output is plain padding.
+cell() { # colour width value
+  printf '%s%*s%s' "$1" "$2" "$3" "$RESET"
+}
+
+human_bytes() {
+  awk -v b="$1" 'BEGIN {
+    if (b >= 1048576)   printf "%.1f MB", b / 1048576
+    else if (b >= 1024) printf "%.1f KB", b / 1024
+    else                printf "%d B", b
+  }'
 }
 
 while [ $# -gt 0 ]; do
@@ -226,11 +243,13 @@ if [ "$USE_COLOR" -eq 1 ] && [ -z "${NO_COLOR:-}" ] &&
   RED=$(tput setaf 1)
   YELLOW=$(tput setaf 3)
   GREEN=$(tput setaf 2)
+  BOLD=$(tput bold)
   RESET=$(tput sgr0)
 else
   RED=""
   YELLOW=""
   GREEN=""
+  BOLD=""
   RESET=""
 fi
 
@@ -257,16 +276,11 @@ mkdir -p "$REPORT_DIR"
 mkdir -p "$BACKUP_ROOT"
 
 if [ "$QUIET" -eq 0 ]; then
-  printf '\n'
-  printf '================================\n'
-  printf '   LogSentry Unix CLI Tool\n'
-  printf '================================\n'
-  printf '\n'
-  printf 'Starting Log Analyzer...\n'
-  printf -- '--------------------------------\n'
-  printf 'Log files found: %s\n' "$log_count"
-  printf '\nPer-file analysis:\n'
-  printf -- '-------------------\n\n'
+  printf '%sLogSentry v%s%s\n' "$BOLD" "$VERSION" "$RESET"
+  printf 'Directory: %s\n' "$LOG_DIR"
+  printf '\n%sPer-file summary%s\n\n' "$BOLD" "$RESET"
+  printf '%s%-28s %6s %10s%s\n' "$BOLD" "File" "Errors" "Warnings" "$RESET"
+  printf -- '%s\n' '----------------------------------------------'
 fi
 
 total_errors=0
@@ -301,39 +315,44 @@ for logfile in "${logfiles[@]}"; do
 
   [ "$QUIET" -eq 1 ] && continue
 
-  printf '%s → Errors: %s%s%s Warnings: %s%s%s\n' \
-    "$filename" "$RED" "$file_errors" "$RESET" "$YELLOW" "$file_warnings" "$RESET"
+  printf '%-28s %s %s\n' \
+    "$filename" "$(cell "$RED" 6 "$file_errors")" "$(cell "$YELLOW" 10 "$file_warnings")"
 
   # If the user asked for details, show the exact lines with line numbers.
-  if [ "$DETAILS" -eq 1 ]; then
+  if [ "$DETAILS" -eq 1 ] && [ $((file_errors + file_warnings)) -gt 0 ]; then
     if [ "$file_errors" -gt 0 ]; then
-      printf '  --- ERROR lines (file: %s)\n' "$filename"
+      printf '\n  --- ERROR lines (file: %s)\n' "$filename"
       printf '%s\n' "$analysis" | sed -n 's/^E /    /p'
     fi
 
-    printf '\n'
-
     if [ "$file_warnings" -gt 0 ]; then
-      printf '  --- WARNING lines (file: %s)\n' "$filename"
+      printf '\n  --- WARNING lines (file: %s)\n' "$filename"
       printf '%s\n' "$analysis" | sed -n 's/^W /    /p'
     fi
-  fi
 
-  printf '\n'
+    printf '\n'
+  fi
 
   # The tallies are already counted, so only the distinct lines get sorted.
   if [ "$TOPN" -gt 0 ]; then
-    printf '  --- Top %s ERROR lines (frequency) for %s:\n' "$TOPN" "$filename"
+    printf '\n  --- Top %s ERROR lines (frequency) for %s:\n' "$TOPN" "$filename"
     printf '%s\n' "$analysis" | sed -n 's/^T //p' | sort -nr | head -n "$TOPN" |
       sed 's/^/    /' || true
+    printf '\n'
   fi
 done
 
 if [ "$QUIET" -eq 0 ]; then
-  printf '\nTotal Summary:\n'
-fi
-
-if [ "$JSON" -eq 0 ]; then
+  # Detail and ranking blocks already end with a blank line.
+  { [ "$DETAILS" -eq 1 ] || [ "$TOPN" -gt 0 ]; } || printf '\n'
+  printf '%sSummary%s\n\n' "$BOLD" "$RESET"
+  printf 'Directory      : %s\n' "$LOG_DIR"
+  printf 'Files analysed : %s\n' "$log_count"
+  printf 'Lines analysed : %s\n' "$total_lines"
+  printf 'Errors         : %s\n' "$(cell "$RED" 1 "$total_errors")"
+  printf 'Warnings       : %s\n' "$(cell "$YELLOW" 1 "$total_warnings")"
+elif [ "$JSON" -eq 0 ]; then
+  # --quiet keeps its original two-line shape for scripts and CI logs.
   printf 'Errors: %s%s%s\n' "$RED" "$total_errors" "$RESET"
   printf 'Warnings: %s%s%s\n' "$YELLOW" "$total_warnings" "$RESET"
 fi
@@ -355,7 +374,6 @@ REPORT_FILE="$REPORT_DIR/report.txt"
   printf '%s' "$report_rows"
 } > "$REPORT_FILE"
 
-[ "$QUIET" -eq 0 ] && printf '\nReport generated: %s\n' "$REPORT_FILE"
 
 # Archive the log files with `tar -C` so the members are relative names
 # (api.log), not the full path the logs happened to live under. Archiving
@@ -368,14 +386,21 @@ archive="$BACKUP_ROOT/$timestamp.tar.gz"
 
 raw_bytes=$(wc -c "${logfiles[@]}" | tail -1 | awk '{print $1}')
 archive_bytes=$(wc -c < "$archive" | tr -d ' ')
+
+# Small inputs can compress to something larger than the source, because gzip
+# and tar both add a fixed header, so the wording follows the actual direction.
 # The parentheses matter: inside printf, a bare `>` is a redirection to awk.
-saved_pct=$(awk -v raw="$raw_bytes" -v gz="$archive_bytes" \
-  'BEGIN { printf "%d", (raw > 0 ? (raw - gz) * 100 / raw : 0) }')
+size_change=$(awk -v raw="$raw_bytes" -v gz="$archive_bytes" 'BEGIN {
+  if (raw <= 0) { printf "no change"; exit }
+  if (gz <= raw) printf "%d%% smaller", (raw - gz) * 100 / raw
+  else           printf "%d%% larger", (gz - raw) * 100 / raw
+}')
 
 if [ "$QUIET" -eq 0 ]; then
-  printf 'Backup archive: %s\n' "$archive"
-  printf 'Compressed %s bytes to %s bytes (%s%% smaller)\n' \
-    "$raw_bytes" "$archive_bytes" "$saved_pct"
+  printf '\nReport  : %s\n' "$REPORT_FILE"
+  printf 'Backup  : %s\n' "$archive"
+  printf 'Archive : %s -> %s (%s)\n' \
+    "$(human_bytes "$raw_bytes")" "$(human_bytes "$archive_bytes")" "$size_change"
 fi
 
 # Archive names are timestamps, so a lexical sort is also chronological and

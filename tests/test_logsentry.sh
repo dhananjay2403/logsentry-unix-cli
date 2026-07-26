@@ -74,9 +74,16 @@ run_with_log_dir() { # log_dir
   STATUS=$?
 }
 
-# Reads a value out of the "Total Summary" block, e.g. summary Errors -> 5
+# Reads a count from the summary block. Works for the aligned full-run format
+# ("Errors         : 19") and the compact --quiet one ("Errors: 19").
 summary() { # label
-  printf '%s\n' "$OUT" | grep "^$1: " | tail -1 | awk '{print $2}'
+  printf '%s\n' "$OUT" | grep "^$1" | tail -1 | awk '{print $NF}'
+}
+
+# Column padding makes exact-match assertions brittle, so table rows are
+# compared with runs of spaces collapsed.
+squeeze() {
+  printf '%s\n' "$1" | tr -s ' '
 }
 
 printf '\nRunning logsentry tests (bash %s)\n' "${BASH_VERSION}"
@@ -88,12 +95,12 @@ run "$FIXTURES/clean"
 assert_eq "clean logs exit 0" "0" "$STATUS"
 assert_eq "clean logs report 0 errors" "0" "$(summary Errors)"
 assert_eq "clean logs report 0 warnings" "0" "$(summary Warnings)"
-assert_contains "clean logs count 1 file" "$OUT" "Log files found: 1"
+assert_contains "clean logs count 1 file" "$OUT" "Files analysed : 1"
 
 run "$FIXTURES/errors"
 assert_eq "error fixtures total 5 errors across 2 files" "5" "$(summary Errors)"
 assert_eq "error fixtures total 0 warnings" "0" "$(summary Warnings)"
-assert_contains "per-file line shows api.log counts" "$OUT" "api.log → Errors: 3 Warnings: 0"
+assert_contains "per-file row shows api.log counts" "$(squeeze "$OUT")" "api.log 3 0"
 
 run "$FIXTURES/warnings"
 assert_eq "warning fixtures total 3 warnings" "3" "$(summary Warnings)"
@@ -166,15 +173,15 @@ assert_contains "FATAL is reported as an error line" "$matched_lines" "FATAL Out
 # --- recursion and patterns ---------------------------------------------------
 
 run "$FIXTURES/nested"
-assert_contains "non-recursive stays at the top level" "$OUT" "Log files found: 1"
+assert_contains "non-recursive stays at the top level" "$OUT" "Files analysed : 1"
 
 run -r "$FIXTURES/nested"
-assert_contains "--recursive descends into sub-directories" "$OUT" "Log files found: 2"
+assert_contains "--recursive descends into sub-directories" "$OUT" "Files analysed : 2"
 assert_eq "--recursive aggregates nested errors" "3" "$(summary Errors)"
 assert_contains "--recursive shows the path relative to the log directory" "$OUT" "svc/deep.log"
 
 run --pattern '*.log*' "$FIXTURES/nested"
-assert_contains "--pattern picks up rotated files" "$OUT" "Log files found: 2"
+assert_contains "--pattern picks up rotated files" "$OUT" "Files analysed : 2"
 assert_eq "--pattern aggregates matching files" "2" "$(summary Errors)"
 
 # --- exit codes ---------------------------------------------------------------
@@ -192,14 +199,14 @@ assert_eq "non-numeric --fail-on-error exits 1" "1" "$STATUS"
 
 run -q "$FIXTURES/errors"
 assert_eq "--quiet still reports the totals" "5" "$(summary Errors)"
-assert_not_contains "--quiet drops the per-file section" "$OUT" "Per-file analysis"
-assert_not_contains "--quiet drops the banner" "$OUT" "LogSentry Unix CLI Tool"
+assert_not_contains "--quiet drops the per-file section" "$OUT" "Per-file summary"
+assert_not_contains "--quiet drops the banner" "$OUT" "LogSentry v"
 
 run --json "$FIXTURES/errors"
 assert_eq "--json exits 0" "0" "$STATUS"
 assert_contains "--json reports totals" "$OUT" '"errors": 5'
 assert_contains "--json lists each file" "$OUT" '"file": "api.log"'
-assert_not_contains "--json prints nothing but JSON" "$OUT" "Total Summary"
+assert_not_contains "--json prints nothing but JSON" "$OUT" "LogSentry v"
 if command -v python3 > /dev/null 2>&1; then
   if printf '%s' "$OUT" | python3 -c 'import json,sys; json.load(sys.stdin)' 2> /dev/null; then
     pass "--json output parses as JSON"
@@ -246,7 +253,8 @@ else
 fi
 
 run "$FIXTURES/errors"
-assert_contains "backup reports the compression ratio" "$OUT" "% smaller"
+assert_contains "backup reports the archive size change" "$OUT" "Archive : "
+assert_not_contains "size change is never a negative percentage" "$OUT" "(-"
 
 # --keep prunes older archives; three runs into one directory, keeping two.
 keep_dir="$WORK/keep"

@@ -5,10 +5,12 @@
 
 # Documentation, demos and screenshots
 README.md
+CHANGELOG.md
 *.pdf
 screenshots/
 demo_video_and_ss/
 docs/
+packaging/
 
 # Tests and generated fixtures
 tests/
