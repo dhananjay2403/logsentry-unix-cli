@@ -7,7 +7,7 @@
 
 set -euo pipefail
 
-VERSION="1.5.0"
+VERSION="1.4.0"
 
 # If the variable is already set, use it. Otherwise fall back to the default.
 LOG_DIR="${LOG_DIR:-logs}"
