@@ -36,7 +36,6 @@ before, including the automatic backup on every run.
   same command produces a byte-identical corpus on any machine.
 - `docs/BENCHMARKS.md` — what each metric measures, how, how to reproduce it, and its caveats.
 - `docs/demo.md` — the exact asciinema/agg workflow for recording the demo GIF.
-- `packaging/logsentry.rb` and `packaging/README.md` — Homebrew formula and tap instructions.
 
 ### Changed
 

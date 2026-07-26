@@ -57,10 +57,6 @@ docker pull dhananjaytiwari/logsentry:1.4     # or :latest
 docker build -t logsentry:1.4 .               # or build it yourself
 ```
 
-> **Homebrew is not published yet.** The formula is finished but the tap repository does not
-> exist yet, so `brew install dhananjay2403/tap/logsentry` will not resolve. The formula and the
-> steps to publish it live in [`packaging/`](packaging/).
-
 ## Quick start
 
 ```bash
@@ -206,9 +202,9 @@ docs/                  benchmark method and demo recording notes
 logs/                  example dataset, the default input directory
 ```
 
-The script targets **bash 3.2** so it runs on stock macOS without Homebrew: no associative
-arrays, no `mapfile`, no `${var,,}`. All `awk` is POSIX so the same code runs under BSD awk,
-gawk, mawk and busybox awk.
+The script targets **bash 3.2**, the version macOS ships, so it needs no newer bash installed:
+no associative arrays, no `mapfile`, no `${var,,}`. All `awk` is POSIX so the same code runs
+under BSD awk, gawk, mawk and busybox awk.
 
 ## Testing
 
