@@ -123,7 +123,7 @@ assert_contains "missing directory explains itself" "$OUT" "directory not found"
 
 run "$FIXTURES/empty"
 assert_eq "directory without log files exits 1" "1" "$STATUS"
-assert_contains "empty directory explains itself" "$OUT" "no log files found"
+assert_contains "empty directory explains itself" "$OUT" "no files matching"
 
 run -t abc "$FIXTURES/errors"
 assert_eq "non-numeric -t exits 1" "1" "$STATUS"
@@ -153,6 +153,64 @@ run --version
 assert_eq "--version exits 0" "0" "$STATUS"
 assert_contains "--version prints the tool name" "$OUT" "logsentry "
 
+# --- level matching -----------------------------------------------------------
+
+run "$FIXTURES/tricky"
+assert_eq "word-boundary matching counts only real error levels" "4" "$(summary Errors)"
+assert_eq "word-boundary matching counts WARN and WARNING" "2" "$(summary Warnings)"
+run -d "$FIXTURES/tricky"
+matched_lines=$(printf '%s\n' "$OUT" | sed -n 's/^    [0-9]*://p')
+assert_not_contains "error_rate=0 is never reported as a matched line" "$matched_lines" "error_rate"
+assert_contains "FATAL is reported as an error line" "$matched_lines" "FATAL Out of memory"
+
+# --- recursion and patterns ---------------------------------------------------
+
+run "$FIXTURES/nested"
+assert_contains "non-recursive stays at the top level" "$OUT" "Log files found: 1"
+
+run -r "$FIXTURES/nested"
+assert_contains "--recursive descends into sub-directories" "$OUT" "Log files found: 2"
+assert_eq "--recursive aggregates nested errors" "3" "$(summary Errors)"
+assert_contains "--recursive shows the path relative to the log directory" "$OUT" "svc/deep.log"
+
+run --pattern '*.log*' "$FIXTURES/nested"
+assert_contains "--pattern picks up rotated files" "$OUT" "Log files found: 2"
+assert_eq "--pattern aggregates matching files" "2" "$(summary Errors)"
+
+# --- exit codes ---------------------------------------------------------------
+
+run --fail-on-error 5 "$FIXTURES/errors"
+assert_eq "--fail-on-error exits 2 at the threshold" "2" "$STATUS"
+
+run --fail-on-error 6 "$FIXTURES/errors"
+assert_eq "--fail-on-error exits 0 below the threshold" "0" "$STATUS"
+
+run --fail-on-error abc "$FIXTURES/errors"
+assert_eq "non-numeric --fail-on-error exits 1" "1" "$STATUS"
+
+# --- output modes -------------------------------------------------------------
+
+run -q "$FIXTURES/errors"
+assert_eq "--quiet still reports the totals" "5" "$(summary Errors)"
+assert_not_contains "--quiet drops the per-file section" "$OUT" "Per-file analysis"
+assert_not_contains "--quiet drops the banner" "$OUT" "LogSentry Unix CLI Tool"
+
+run --json "$FIXTURES/errors"
+assert_eq "--json exits 0" "0" "$STATUS"
+assert_contains "--json reports totals" "$OUT" '"errors": 5'
+assert_contains "--json lists each file" "$OUT" '"file": "api.log"'
+assert_not_contains "--json prints nothing but JSON" "$OUT" "Total Summary"
+if command -v python3 > /dev/null 2>&1; then
+  if printf '%s' "$OUT" | python3 -c 'import json,sys; json.load(sys.stdin)' 2> /dev/null; then
+    pass "--json output parses as JSON"
+  else
+    fail "--json output parses as JSON" "python3 could not parse the document"
+  fi
+fi
+
+run --no-color "$FIXTURES/errors"
+assert_not_contains "--no-color emits no escape sequences" "$OUT" "$(printf '\033')"
+
 # --- artifacts ----------------------------------------------------------------
 
 run "$FIXTURES/errors"
@@ -177,6 +235,36 @@ fi
 
 entries=$(find "$RUN_DIR/backups" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')
 assert_eq "backup leaves only the archive behind (no staging copy)" "1" "$entries"
+assert_eq "every run still creates a backup" "1" "$entries"
+
+if [ -f "$report" ]; then
+  assert_contains "report includes the per-file table header" "$(cat "$report")" "File"
+  assert_contains "report includes a per-file row" "$(cat "$report")" "api.log"
+  assert_contains "report records the line total" "$(cat "$report")" "Lines analyzed:"
+else
+  fail "report includes the per-file table" "no file at $report"
+fi
+
+run "$FIXTURES/errors"
+assert_contains "backup reports the compression ratio" "$OUT" "% smaller"
+
+# --keep prunes older archives; three runs into one directory, keeping two.
+keep_dir="$WORK/keep"
+rm -rf "$keep_dir"
+mkdir -p "$keep_dir"
+for _ in 1 2 3; do
+  REPORT_DIR="$keep_dir/reports" BACKUP_ROOT="$keep_dir/backups" \
+    "$SCRIPT" --keep 2 "$FIXTURES/errors" > /dev/null 2>&1
+  sleep 1 # archive names are per-second timestamps
+done
+kept=$(find "$keep_dir/backups" -name '*.tar.gz' | wc -l | tr -d ' ')
+assert_eq "--keep 2 leaves exactly two archives" "2" "$kept"
+
+# --- packaging ----------------------------------------------------------------
+
+script_version=$("$SCRIPT" --version | awk '{print $2}')
+docker_version=$(sed -n 's/.*image.version="\([^"]*\)".*/\1/p' "$ROOT/Dockerfile")
+assert_eq "Dockerfile version label matches the script" "$script_version" "$docker_version"
 
 # --- results ------------------------------------------------------------------
 

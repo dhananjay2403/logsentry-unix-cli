@@ -42,10 +42,22 @@ jobs:
       - name: Run the CLI inside the container
         run: |
           mkdir -p ci-out/reports ci-out/backups
-          docker run --rm \
+          docker run --rm --user "$(id -u):$(id -g)" \
             -v "$PWD/logs:/data/logs" \
             -v "$PWD/ci-out/reports:/data/reports" \
             -v "$PWD/ci-out/backups:/data/backups" \
             logsentry:ci | tee ci-output.txt
           grep -q "Process completed successfully" ci-output.txt
           test -f ci-out/reports/report.txt
+
+      # Alpine ships busybox awk, so this proves the engine is POSIX-portable.
+      - name: Check the counts match the host run
+        run: |
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v "$PWD/logs:/data/logs" \
+            -v "$PWD/ci-out/reports:/data/reports" \
+            -v "$PWD/ci-out/backups:/data/backups" \
+            logsentry:ci --json > container.json
+          ./logsentry --json logs > host.json
+          diff <(grep -E '"(files|lines|errors|warnings)"' container.json) \
+               <(grep -E '"(files|lines|errors|warnings)"' host.json)

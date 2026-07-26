@@ -4,24 +4,11 @@
 # write a summary report, and archive the logs.
 #
 # Portability: written for bash 3.2 (the version macOS ships) and POSIX tools,
-# so the same script runs unchanged on macOS and Linux.
+# so the same script runs unchanged on macOS, Linux and Alpine/busybox.
 
 set -euo pipefail
 
-VERSION="1.4.0"
-
-# Colors only when writing to a real terminal, so redirected output stays clean.
-if command -v tput >/dev/null 2>&1 && [ -t 1 ]; then
-  RED=$(tput setaf 1)
-  YELLOW=$(tput setaf 3)
-  GREEN=$(tput setaf 2)
-  RESET=$(tput sgr0)
-else
-  RED=""
-  YELLOW=""
-  GREEN=""
-  RESET=""
-fi
+VERSION="1.5.0"
 
 # If the variable is already set, use it. Otherwise fall back to the default.
 LOG_DIR="${LOG_DIR:-logs}"
@@ -30,6 +17,47 @@ BACKUP_ROOT="${BACKUP_ROOT:-backups}"
 
 DETAILS=0
 TOPN=0
+KEEP=0
+FAIL_ON_ERROR=0
+JSON=0
+QUIET=0
+RECURSIVE=0
+PATTERN="*.log"
+USE_COLOR=1
+
+# Levels are matched as whole words, so "error_rate=0" and "ErrorHandler" are
+# not errors, while WARN, FATAL and CRITICAL are recognised.
+ERROR_RE='(^|[^a-z0-9_])(error|err|fatal|critical)([^a-z0-9_]|$)'
+WARN_RE='(^|[^a-z0-9_])(warn|warning)([^a-z0-9_]|$)'
+
+# One pass over each file produces everything we need. The tags let the shell
+# pick the pieces apart afterwards without re-reading the log:
+#   C <errors> <warnings> <lines>   counts (always)
+#   E <lineno>:<line>               an ERROR line   (only with --details)
+#   W <lineno>:<line>               a WARNING line  (only with --details)
+#   T <count> <line>                tally of a repeated ERROR (only with -t)
+#
+# shellcheck disable=SC2016  # $0 and NR belong to awk, not the shell
+AWK_ENGINE='
+{
+  lines++
+  low = tolower($0)
+  if (low ~ error_re) {
+    errors++
+    if (details) printf "E %d:%s\n", NR, $0
+    if (topn)    tally[$0]++
+  }
+  if (low ~ warn_re) {
+    warnings++
+    if (details) printf "W %d:%s\n", NR, $0
+  }
+}
+END {
+  printf "C %d %d %d\n", errors + 0, warnings + 0, lines + 0
+  if (topn)
+    for (line in tally) printf "T %7d %s\n", tally[line], line
+}
+'
 
 usage() {
   cat <<HELP
@@ -40,6 +68,13 @@ Options:
   -d, --details            Show matching ERROR/WARNING lines with line numbers
   -t N, --top-errors N     Show the N most frequent ERROR lines per file
       --top-errors=N       Same as -t N
+  -r, --recursive          Search sub-directories too
+      --pattern GLOB       Which files to analyse (default: *.log)
+      --json               Print a JSON summary instead of the human report
+  -q, --quiet              Print only the totals
+      --no-color           Disable coloured output (also honours NO_COLOR)
+      --keep N             Keep only the N newest backup archives
+      --fail-on-error N    Exit with status 2 when errors reach N
   -V, --version            Print the version and exit
   -h, --help               Show this help
 
@@ -47,10 +82,18 @@ Environment:
   LOG_DIR                  Log directory to analyse (default: logs)
   REPORT_DIR               Where the report is written (default: reports)
   BACKUP_ROOT              Where backup archives are written (default: backups)
+  NO_COLOR                 Set to any value to disable coloured output
 
-Notes:
-  [log_directory] is optional and overrides LOG_DIR.
-  Exit status: 0 on success, 1 on a usage or input error.
+Exit status:
+  0  Analysis completed
+  1  Usage error, missing directory, or no matching files found
+  2  Errors reached the --fail-on-error threshold
+
+Examples:
+  logsentry /var/log/myapp
+  logsentry -r --pattern '*.log*' /var/log/myapp
+  logsentry --json logs | jq '.results[0]'
+  logsentry -q --fail-on-error 10 /var/log/myapp || echo "too many errors"
 HELP
 }
 
@@ -66,12 +109,18 @@ is_number() {
   esac
 }
 
-# grep -c prints 0 but exits 1 when there are no matches, so failures are
-# tolerated here and an empty result falls back to 0.
-count_matches() {
-  local n
-  n=$(grep -ic "$1" "$2" 2>/dev/null || true)
-  printf '%s' "${n:-0}"
+require_number() { # flag value
+  is_number "$2" || die "$1 expects a positive number, got: $2"
+}
+
+require_value() { # flag value
+  if [ -z "$2" ] || [ "${2#-}" != "$2" ]; then
+    die "$1 requires an argument"
+  fi
+}
+
+json_escape() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
 while [ $# -gt 0 ]; do
@@ -81,16 +130,62 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     -t | --top-errors)
-      if [ -z "${2-}" ] || [[ "$2" == -* ]]; then
-        die "$1 requires a number argument (e.g. -t 3)"
-      fi
-      is_number "$2" || die "$1 expects a positive number, got: $2"
+      require_value "$1" "${2-}"
+      require_number "$1" "$2"
       TOPN="$2"
       shift 2
       ;;
     --top-errors=*)
       TOPN="${1#*=}"
-      is_number "$TOPN" || die "--top-errors expects a positive number, got: $TOPN"
+      require_number "--top-errors" "$TOPN"
+      shift
+      ;;
+    -r | --recursive)
+      RECURSIVE=1
+      shift
+      ;;
+    --pattern)
+      require_value "$1" "${2-}"
+      PATTERN="$2"
+      shift 2
+      ;;
+    --pattern=*)
+      PATTERN="${1#*=}"
+      [ -n "$PATTERN" ] || die "--pattern requires a value"
+      shift
+      ;;
+    --keep)
+      require_value "$1" "${2-}"
+      require_number "$1" "$2"
+      KEEP="$2"
+      shift 2
+      ;;
+    --keep=*)
+      KEEP="${1#*=}"
+      require_number "--keep" "$KEEP"
+      shift
+      ;;
+    --fail-on-error)
+      require_value "$1" "${2-}"
+      require_number "$1" "$2"
+      FAIL_ON_ERROR="$2"
+      shift 2
+      ;;
+    --fail-on-error=*)
+      FAIL_ON_ERROR="${1#*=}"
+      require_number "--fail-on-error" "$FAIL_ON_ERROR"
+      shift
+      ;;
+    --json)
+      JSON=1
+      shift
+      ;;
+    -q | --quiet)
+      QUIET=1
+      shift
+      ;;
+    --no-color)
+      USE_COLOR=0
       shift
       ;;
     -V | --version)
@@ -117,79 +212,131 @@ while [ $# -gt 0 ]; do
   esac
 done
 
+LOG_DIR="${LOG_DIR%/}"
+
+# JSON output must stay machine-readable, so it implies no colour and no chatter.
+if [ "$JSON" -eq 1 ]; then
+  USE_COLOR=0
+  QUIET=1
+fi
+
+# Colours only when asked for, supported, and writing to a real terminal.
+if [ "$USE_COLOR" -eq 1 ] && [ -z "${NO_COLOR:-}" ] &&
+  command -v tput > /dev/null 2>&1 && [ -t 1 ]; then
+  RED=$(tput setaf 1)
+  YELLOW=$(tput setaf 3)
+  GREEN=$(tput setaf 2)
+  RESET=$(tput sgr0)
+else
+  RED=""
+  YELLOW=""
+  GREEN=""
+  RESET=""
+fi
+
 [ -d "$LOG_DIR" ] || die "directory not found: $LOG_DIR"
 
-# Collect the log files up front: one glob, reused for counting, analysis and
-# the archive (no `ls` parsing, and filenames with spaces stay intact).
-logfiles=("$LOG_DIR"/*.log)
-[ -e "${logfiles[0]}" ] || die "no log files found in directory: $LOG_DIR"
+# Collect the files once, sorted, and reuse the list for analysis and backup.
+if [ "$RECURSIVE" -eq 1 ]; then
+  found=$(find "$LOG_DIR" -type f -name "$PATTERN" | LC_ALL=C sort)
+else
+  found=$(find "$LOG_DIR" -maxdepth 1 -type f -name "$PATTERN" | LC_ALL=C sort)
+fi
+
+logfiles=()
+while IFS= read -r file; do
+  [ -n "$file" ] && logfiles+=("$file")
+done <<< "$found"
+
+if [ "${#logfiles[@]}" -eq 0 ]; then
+  die "no files matching $PATTERN found in directory: $LOG_DIR"
+fi
 log_count=${#logfiles[@]}
 
 mkdir -p "$REPORT_DIR"
 mkdir -p "$BACKUP_ROOT"
 
-printf '\n'
-printf '================================\n'
-printf '   LogSentry Unix CLI Tool\n'
-printf '================================\n'
-printf '\n'
-printf 'Starting Log Analyzer...\n'
-printf -- '--------------------------------\n'
-printf 'Log files found: %s\n' "$log_count"
-
-printf '\nPer-file analysis:\n'
-printf -- '-------------------\n\n'
+if [ "$QUIET" -eq 0 ]; then
+  printf '\n'
+  printf '================================\n'
+  printf '   LogSentry Unix CLI Tool\n'
+  printf '================================\n'
+  printf '\n'
+  printf 'Starting Log Analyzer...\n'
+  printf -- '--------------------------------\n'
+  printf 'Log files found: %s\n' "$log_count"
+  printf '\nPer-file analysis:\n'
+  printf -- '-------------------\n\n'
+fi
 
 total_errors=0
 total_warnings=0
+total_lines=0
+report_rows=""
+json_rows=""
+members=()
 
 for logfile in "${logfiles[@]}"; do
-  filename=$(basename "$logfile")
+  filename="${logfile#"$LOG_DIR"/}"
 
-  file_errors=$(count_matches "ERROR" "$logfile")
-  file_warnings=$(count_matches "WARNING" "$logfile")
+  if ! analysis=$(awk -v error_re="$ERROR_RE" -v warn_re="$WARN_RE" \
+    -v details="$DETAILS" -v topn="$TOPN" "$AWK_ENGINE" "$logfile"); then
+    printf 'logsentry: skipping unreadable file: %s\n' "$logfile" >&2
+    continue
+  fi
 
-  printf '%s → Errors: %s%s%s Warnings: %s%s%s\n' \
-    "$filename" "$RED" "$file_errors" "$RESET" "$YELLOW" "$file_warnings" "$RESET"
+  counts=$(printf '%s\n' "$analysis" | sed -n 's/^C //p')
+  read -r file_errors file_warnings file_lines <<< "$counts"
 
   total_errors=$((total_errors + file_errors))
   total_warnings=$((total_warnings + file_warnings))
+  total_lines=$((total_lines + file_lines))
+  members+=("$filename")
+
+  report_rows="$report_rows$(printf '%-28s %8s %10s\n' "$filename" "$file_errors" "$file_warnings")
+"
+  json_rows="$json_rows$(printf '    {"file": "%s", "errors": %s, "warnings": %s, "lines": %s},' \
+    "$(json_escape "$filename")" "$file_errors" "$file_warnings" "$file_lines")
+"
+
+  [ "$QUIET" -eq 1 ] && continue
+
+  printf '%s → Errors: %s%s%s Warnings: %s%s%s\n' \
+    "$filename" "$RED" "$file_errors" "$RESET" "$YELLOW" "$file_warnings" "$RESET"
 
   # If the user asked for details, show the exact lines with line numbers.
   if [ "$DETAILS" -eq 1 ]; then
     if [ "$file_errors" -gt 0 ]; then
       printf '  --- ERROR lines (file: %s)\n' "$filename"
-      grep -in "ERROR" "$logfile" | sed 's/^/    /' || true
+      printf '%s\n' "$analysis" | sed -n 's/^E /    /p'
     fi
 
     printf '\n'
 
     if [ "$file_warnings" -gt 0 ]; then
       printf '  --- WARNING lines (file: %s)\n' "$filename"
-      grep -in "WARNING" "$logfile" | sed 's/^/    /' || true
+      printf '%s\n' "$analysis" | sed -n 's/^W /    /p'
     fi
   fi
 
   printf '\n'
 
-  # If the user asked for top errors, rank the N most repeated ERROR lines.
-  # `head` closing the pipe early is expected, hence the `|| true`.
+  # The tallies are already counted, so only the distinct lines get sorted.
   if [ "$TOPN" -gt 0 ]; then
     printf '  --- Top %s ERROR lines (frequency) for %s:\n' "$TOPN" "$filename"
-
-    grep -i "ERROR" "$logfile" 2>/dev/null |
-      sed 's/^[[:space:]]*//' |
-      sort |
-      uniq -c |
-      sort -nr |
-      head -n "$TOPN" |
+    printf '%s\n' "$analysis" | sed -n 's/^T //p' | sort -nr | head -n "$TOPN" |
       sed 's/^/    /' || true
   fi
 done
 
-printf '\nTotal Summary:\n'
-printf 'Errors: %s%s%s\n' "$RED" "$total_errors" "$RESET"
-printf 'Warnings: %s%s%s\n' "$YELLOW" "$total_warnings" "$RESET"
+if [ "$QUIET" -eq 0 ]; then
+  printf '\nTotal Summary:\n'
+fi
+
+if [ "$JSON" -eq 0 ]; then
+  printf 'Errors: %s%s%s\n' "$RED" "$total_errors" "$RESET"
+  printf 'Warnings: %s%s%s\n' "$YELLOW" "$total_warnings" "$RESET"
+fi
 
 timestamp=$(date +"%Y-%m-%d_%H-%M-%S")
 
@@ -200,23 +347,69 @@ REPORT_FILE="$REPORT_DIR/report.txt"
   printf 'Directory analyzed: %s\n' "$LOG_DIR"
   printf -- '--------------------------------\n'
   printf 'Log files analyzed: %s\n' "$log_count"
+  printf 'Lines analyzed: %s\n' "$total_lines"
   printf 'Errors: %s\n' "$total_errors"
   printf 'Warnings: %s\n' "$total_warnings"
+  printf -- '--------------------------------\n'
+  printf '%-28s %8s %10s\n' "File" "Errors" "Warnings"
+  printf '%s' "$report_rows"
 } > "$REPORT_FILE"
 
-printf '\nReport generated: %s\n' "$REPORT_FILE"
+[ "$QUIET" -eq 0 ] && printf '\nReport generated: %s\n' "$REPORT_FILE"
 
-# Archive the log files with `tar -C` so the members are plain file names
+# Archive the log files with `tar -C` so the members are relative names
 # (api.log), not the full path the logs happened to live under. Archiving
 # straight from the source also avoids staging a second copy on disk.
 archive="$BACKUP_ROOT/$timestamp.tar.gz"
+(
+  umask 077
+  tar -czf "$archive" -C "$LOG_DIR" -- "${members[@]}"
+)
 
-basenames=()
-for logfile in "${logfiles[@]}"; do
-  basenames+=("$(basename "$logfile")")
-done
+raw_bytes=$(wc -c "${logfiles[@]}" | tail -1 | awk '{print $1}')
+archive_bytes=$(wc -c < "$archive" | tr -d ' ')
+# The parentheses matter: inside printf, a bare `>` is a redirection to awk.
+saved_pct=$(awk -v raw="$raw_bytes" -v gz="$archive_bytes" \
+  'BEGIN { printf "%d", (raw > 0 ? (raw - gz) * 100 / raw : 0) }')
 
-tar -czf "$archive" -C "$LOG_DIR" "${basenames[@]}"
+if [ "$QUIET" -eq 0 ]; then
+  printf 'Backup archive: %s\n' "$archive"
+  printf 'Compressed %s bytes to %s bytes (%s%% smaller)\n' \
+    "$raw_bytes" "$archive_bytes" "$saved_pct"
+fi
 
-printf 'Backup archive: %s\n' "$archive"
-printf '\n%sProcess completed successfully!%s\n' "$GREEN" "$RESET"
+# Archive names are timestamps, so a lexical sort is also chronological and
+# the oldest ones are simply the first entries of the glob.
+if [ "$KEEP" -gt 0 ]; then
+  archives=("$BACKUP_ROOT"/*.tar.gz)
+  if [ -e "${archives[0]}" ] && [ "${#archives[@]}" -gt "$KEEP" ]; then
+    i=0
+    while [ "$i" -lt $((${#archives[@]} - KEEP)) ]; do
+      rm -f "${archives[$i]}"
+      i=$((i + 1))
+    done
+  fi
+fi
+
+if [ "$JSON" -eq 1 ]; then
+  printf '{\n'
+  printf '  "version": "%s",\n' "$VERSION"
+  printf '  "directory": "%s",\n' "$(json_escape "$LOG_DIR")"
+  printf '  "files": %s,\n' "$log_count"
+  printf '  "lines": %s,\n' "$total_lines"
+  printf '  "errors": %s,\n' "$total_errors"
+  printf '  "warnings": %s,\n' "$total_warnings"
+  printf '  "report": "%s",\n' "$(json_escape "$REPORT_FILE")"
+  printf '  "archive": "%s",\n' "$(json_escape "$archive")"
+  printf '  "results": [\n'
+  printf '%s' "${json_rows%,
+}"
+  printf '\n  ]\n'
+  printf '}\n'
+elif [ "$QUIET" -eq 0 ]; then
+  printf '\n%sProcess completed successfully!%s\n' "$GREEN" "$RESET"
+fi
+
+if [ "$FAIL_ON_ERROR" -gt 0 ] && [ "$total_errors" -ge "$FAIL_ON_ERROR" ]; then
+  exit 2
+fi

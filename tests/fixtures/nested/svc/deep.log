@@ -1,0 +1,3 @@
+2026-03-01 15:10:00 INFO Nested service started
+2026-03-01 15:10:01 ERROR Nested failure one
+2026-03-01 15:10:02 ERROR Nested failure two
