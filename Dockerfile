@@ -4,7 +4,7 @@ LABEL org.opencontainers.image.title="LogSentry" \
       org.opencontainers.image.description="Bash CLI for Unix log analysis, reporting and backups" \
       org.opencontainers.image.source="https://github.com/dhananjay2403/logsentry-unix-cli" \
       org.opencontainers.image.licenses="MIT" \
-      org.opencontainers.image.version="1.4 .0"
+      org.opencontainers.image.version="1.4.0"
 
 # bash runs the script; tar and gzip create the backup archives.
 # Alpine's awk is busybox awk, which is exactly why the analysis engine

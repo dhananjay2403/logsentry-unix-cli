@@ -8,14 +8,14 @@ from a **tap**, which is just a separate GitHub repo whose name starts with `hom
 1. Tag and push a release, because the formula installs from a release tarball:
 
    ```bash
-   git tag -a v1.5.0 -m "LogSentry v1.5.0"
-   git push origin v1.5.0
+   git tag -a v1.4.0 -m "LogSentry v1.4.0"
+   git push origin v1.4.0
    ```
 
 2. Get the checksum of the tarball GitHub generates for that tag:
 
    ```bash
-   curl -sL https://github.com/dhananjay2403/logsentry-unix-cli/archive/refs/tags/v1.5.0.tar.gz \
+   curl -sL https://github.com/dhananjay2403/logsentry-unix-cli/archive/refs/tags/v1.4.0.tar.gz \
      | shasum -a 256
    ```
 
@@ -29,7 +29,7 @@ from a **tap**, which is just a separate GitHub repo whose name starts with `hom
    mkdir -p Formula
    cp /path/to/logsentry-unix-cli/packaging/logsentry.rb Formula/
    git add Formula/logsentry.rb
-   git commit -m "logsentry 1.5.0"
+   git commit -m "logsentry 1.4.0"
    git push
    ```
 

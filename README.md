@@ -50,17 +50,16 @@ PREFIX="$HOME/.local" ./install.sh   # user-local, no sudo
 
 Uninstall with `./uninstall.sh` (pass the same `PREFIX` you installed with).
 
-Or build the Docker image locally:
+Docker:
 
 ```bash
-docker build -t logsentry:1.5 .
+docker pull dhananjaytiwari/logsentry:1.4     # or :latest
+docker build -t logsentry:1.4 .               # or build it yourself
 ```
 
-> **Not published yet.** A Homebrew tap (`brew install dhananjay2403/tap/logsentry`) and a
-> pre-built Docker Hub image for this version are prepared but not released — the formula and
-> the release steps live in [`packaging/`](packaging/). The published Docker Hub tag
-> (`dhananjaytiwari/logsentry:1.3`) predates the Alpine image and the current engine, so build
-> locally instead until 1.5 is pushed.
+> **Homebrew is not published yet.** The formula is finished but the tap repository does not
+> exist yet, so `brew install dhananjay2403/tap/logsentry` will not resolve. The formula and the
+> steps to publish it live in [`packaging/`](packaging/).
 
 ## Quick start
 
@@ -131,7 +130,7 @@ Exit codes are a CLI's API — they are what let the tool compose with `&&`, `||
 ## Docker usage
 
 ```bash
-docker build -t logsentry:1.5 .
+docker build -t logsentry:1.4 .
 mkdir -p host_logs host_reports host_backups
 cp logs/*.log host_logs/
 
@@ -139,7 +138,7 @@ docker run --rm --user "$(id -u):$(id -g)" \
   -v "$(pwd)/host_logs:/data/logs" \
   -v "$(pwd)/host_reports:/data/reports" \
   -v "$(pwd)/host_backups:/data/backups" \
-  logsentry:1.5
+  logsentry:1.4
 ```
 
 Reports and archives persist on the host through the bind mounts. The image is Alpine-based and

@@ -5,7 +5,7 @@
 class Logsentry < Formula
   desc "Bash CLI for Unix log analysis, reporting, and compressed backups"
   homepage "https://github.com/dhananjay2403/logsentry-unix-cli"
-  url "https://github.com/dhananjay2403/logsentry-unix-cli/archive/refs/tags/v1.5.0.tar.gz"
+  url "https://github.com/dhananjay2403/logsentry-unix-cli/archive/refs/tags/v1.4.0.tar.gz"
   sha256 "REPLACE_WITH_SHA256_OF_THE_RELEASE_TARBALL"
   license "MIT"
   head "https://github.com/dhananjay2403/logsentry-unix-cli.git", branch: "main"

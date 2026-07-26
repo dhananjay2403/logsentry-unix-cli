@@ -12,8 +12,9 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 SCRIPT="$ROOT/logsentry"
 GENERATOR="$ROOT/scripts/generate_logs.sh"
 
-# Previous version to compare against.
-BASELINE_REF="${BASELINE_REF:-v1.4.0}"
+# The multi-pass grep implementation this engine replaced. A commit, not a tag:
+# the v1.4.0 tag is the release itself and would compare the code with itself.
+BASELINE_REF="${BASELINE_REF:-8e38714}"
 
 SIZES="100000 1000000"
 PRESET=""
@@ -34,7 +35,7 @@ Options:
   -h, --help     Show this help
 
 Environment:
-  BASELINE_REF   Git ref holding the previous implementation (default: v1.4.0)
+  BASELINE_REF   Git ref holding the previous implementation (default: 8e38714)
 HELP
 }
 
