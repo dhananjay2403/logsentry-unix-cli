@@ -1,9 +1,6 @@
 <p align="center">
   <h1 align="center">LogSentry</h1>
-  <p align="center">
-    A single-file Bash CLI for triaging directories of log files:
-    per-file ERROR/WARNING counts, ranked errors, JSON output, and compressed backups.
-  </p>
+  <p align="center">Triage a directory of logs in one command.</p>
   <p align="center">
     <a href="https://github.com/dhananjay2403/logsentry-unix-cli/actions/workflows/ci.yml">
       <img src="https://github.com/dhananjay2403/logsentry-unix-cli/actions/workflows/ci.yml/badge.svg" alt="CI status" />
@@ -14,32 +11,30 @@
   </p>
 </p>
 
----
+<table>
+  <tr>
+    <td align="center"><b>Analysis</b></td>
+    <td align="center"><b>Ranked errors (<code>-t 3</code>)</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/run_output.jpg" width="100%" alt="Run output" /></td>
+    <td align="center"><img src="screenshots/run_top_errors.jpg" width="100%" alt="Top errors" /></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Generated report</b></td>
+    <td align="center"><b>JSON output & CI</b></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/report_view.jpg" width="100%" alt="Generated report" /></td>
+    <td align="center"><img src="screenshots/ci_usage.jpg" width="100%" alt="JSON output and threshold exit code" /></td>
+  </tr>
+</table>
 
-## Overview
+Point it at a directory of logs: it reports how many errors and warnings each file has, ranks the
+errors that repeat, and archives what it analysed. One Bash script, no dependencies beyond standard
+Unix tools.
 
-Point LogSentry at a directory of logs and it tells you how many errors and warnings each file
-has, which errors repeat most, and writes a timestamped compressed archive of the logs it analysed.
-
-It is one Bash script with no dependencies beyond standard Unix tools, so it installs by copying
-a single file and runs the same way on macOS (stock bash 3.2), Linux, and inside a small Alpine
-container. Log levels are matched as whole words, so `error_rate=0` is not counted as an error
-and `WARN` is not missed. `--json` and threshold exit codes make it usable from a CI pipeline.
-
-## Features
-
-- Per-file and aggregate ERROR/WARNING counts, with `-d` for matching lines and `-t N` for the
-  most frequent errors.
-- Whole-word level matching: `ERROR`, `ERR`, `FATAL`, `CRITICAL`, `WARN`, `WARNING` count;
-  `error_rate=0`, `ErrorHandler` and `0 errors found` do not.
-- Single-pass POSIX `awk` engine — each file is read once regardless of which flags are used.
-- `--json` output for pipelines, `--fail-on-error N` (exit `2`) to gate CI.
-- Recursive search and custom globs for nested and rotated logs (`-r`, `--pattern`).
-- Timestamped `.tar.gz` backups created under `umask 077`, with `--keep N` retention.
-- Reports with a per-file breakdown, written to a configurable directory.
-- Colour that disables itself when redirected, plus `--no-color` and `NO_COLOR`.
-
-## Installation
+## Install
 
 ```bash
 git clone https://github.com/dhananjay2403/logsentry-unix-cli.git
@@ -48,30 +43,62 @@ cd logsentry-unix-cli
 PREFIX="$HOME/.local" ./install.sh   # user-local, no sudo
 ```
 
-Uninstall with `./uninstall.sh` (pass the same `PREFIX` you installed with).
-
-Docker:
+Uninstall with `./uninstall.sh`, passing the same `PREFIX`. Or use Docker:
 
 ```bash
 docker pull dhananjaytiwari/logsentry:1.4     # or :latest
-docker build -t logsentry:1.4 .               # or build it yourself
 ```
 
-## Quick start
+## Features
+
+- **Per-file + aggregate counts** — `-d` for matching lines, `-t N` for top errors.
+- **Whole-word levels** — counts `WARN` and `FATAL`, ignores `error_rate=0`.
+- **Single-pass awk** — each file read once, whatever flags you use.
+- **CI-ready** — `--json` output, `--fail-on-error N` exits `2`.
+- **Nested + rotated logs** — `-r` and `--pattern '*.log*'`.
+- **Backups** — timestamped `.tar.gz`, `umask 077`, `--keep N` retention.
+- **Portable** — macOS bash 3.2, Linux, Alpine busybox; all verified in CI.
+
+## Benchmarks
+
+<!-- BENCHMARK SUMMARY START -->
+
+Measured with `./scripts/benchmark.sh --full` on Apple M2 (Darwin arm64, bash 3.2.57).
+
+### Performance summary
+
+| Metric | Measured |
+|---|---|
+| Throughput (5M-line benchmark) | 445,632 lines/s |
+| Peak memory | 3.7 MB |
+| Docker image | 20.5MB |
+| Docker image reduction | 81% smaller than the previous `ubuntu:22.04` image |
+| Compression ratio | 90% (278.9 MB of logs to 25.9 MB) |
+| Automated tests | 65 / 65 passing |
+| ShellCheck | zero warnings (`-S style`) |
+
+### Scaling
+
+| Lines | Corpus size | Median time | Throughput | Peak memory |
+|---|---|---|---|---|
+| 100,000 | 5.4 MB | 0.29s | 344,827 lines/s | 3.6 MB |
+| 1,000,000 | 55.1 MB | 2.49s | 401,606 lines/s | 3.6 MB |
+| 5,000,000 | 278.9 MB | 11.22s | 445,632 lines/s | 3.7 MB |
+
+_Median of 5 runs per size after a discarded warm-up, end to end (analysis, report,
+archive). Memory stays flat as the corpus grows because the engine streams with awk.
+Method and caveats: [docs/BENCHMARKS.md](docs/BENCHMARKS.md)._
+<!-- BENCHMARK SUMMARY END -->
+
+## Usage
 
 ```bash
-logsentry                    # analyse ./logs
-logsentry /var/log/myapp     # analyse any directory
+logsentry                        # analyse ./logs
+logsentry /var/log/myapp         # analyse any directory
 logsentry --help
-```
 
-## Examples
-
-```bash
-# Show the matching ERROR/WARNING lines with line numbers
+# Matching lines with line numbers, and the three most frequent errors per file
 logsentry -d /var/log/myapp
-
-# Rank the three most frequent errors in each file
 logsentry -t 3 /var/log/myapp
 
 # Nested directories and rotated files
@@ -88,7 +115,7 @@ logsentry -q --fail-on-error 10 /var/log/myapp || echo "error budget exceeded"
 logsentry --keep 5 /var/log/myapp
 ```
 
-## CLI options
+### Options
 
 | Option | Description |
 |---|---|
@@ -104,7 +131,7 @@ logsentry --keep 5 /var/log/myapp
 | `-V`, `--version` | Print the version |
 | `-h`, `--help` | Show help |
 
-### Environment variables
+### Environment
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -123,88 +150,18 @@ logsentry --keep 5 /var/log/myapp
 
 Exit codes are a CLI's API — they are what let the tool compose with `&&`, `||`, and CI.
 
-## Docker usage
+## Docker
 
 ```bash
-docker build -t logsentry:1.4 .
-mkdir -p host_logs host_reports host_backups
-cp logs/*.log host_logs/
-
 docker run --rm --user "$(id -u):$(id -g)" \
   -v "$(pwd)/host_logs:/data/logs" \
   -v "$(pwd)/host_reports:/data/reports" \
   -v "$(pwd)/host_backups:/data/backups" \
-  logsentry:1.4
+  dhananjaytiwari/logsentry:1.4
 ```
 
-Reports and archives persist on the host through the bind mounts. The image is Alpine-based and
-runs as a non-root user, so `--user "$(id -u):$(id -g)"` keeps generated files owned by you.
-Alpine ships **busybox awk**, which is why the engine is written in POSIX awk — CI verifies that
-the container and the host produce identical counts.
-
-## Benchmarks
-
-<!-- BENCHMARK SUMMARY START -->
-
-Measured with `./scripts/benchmark.sh --full` on Apple M2 (Darwin arm64, bash 3.2.57).
-
-### Performance summary
-
-| Metric | Measured |
-|---|---|
-| Throughput (5M-line benchmark) | 445,632 lines/s |
-| Peak memory | 3.7 MB |
-| Docker image | 20.5MB |
-| Docker image reduction | 81% smaller than the previous `ubuntu:22.04` image |
-| Compression ratio | 90% (278.9 MB of logs to 25.9 MB) |
-| Automated tests | 64 / 64 passing |
-| ShellCheck | zero warnings (`-S style`) |
-
-### Scaling
-
-| Lines | Corpus size | Median time | Throughput | Peak memory |
-|---|---|---|---|---|
-| 100,000 | 5.4 MB | 0.29s | 344,827 lines/s | 3.6 MB |
-| 1,000,000 | 55.1 MB | 2.49s | 401,606 lines/s | 3.6 MB |
-| 5,000,000 | 278.9 MB | 11.22s | 445,632 lines/s | 3.7 MB |
-
-_Median of 5 runs per size after a discarded warm-up, end to end (analysis, report,
-archive). Memory stays flat as the corpus grows because the engine streams with awk.
-Method and caveats: [docs/BENCHMARKS.md](docs/BENCHMARKS.md)._
-<!-- BENCHMARK SUMMARY END -->
-
-## Screenshots
-
-<table>
-  <tr>
-    <td align="center"><b>Run output</b></td>
-    <td align="center"><b>Top errors (<code>-t 3</code>)</b></td>
-    <td align="center"><b>Generated report</b></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="screenshots/run_output.jpg" width="100%" alt="Run output" /></td>
-    <td align="center"><img src="screenshots/run_top_errors.jpg" width="100%" alt="Top errors" /></td>
-    <td align="center"><img src="screenshots/report_view.jpg" width="100%" alt="Generated report" /></td>
-  </tr>
-</table>
-
-A terminal recording shows the CLI in use better than screenshots do —
-see [docs/demo.md](docs/demo.md) for how it is recorded.
-
-## Development
-
-```
-logsentry              the CLI (one file, no build step)
-install.sh             installer, honours PREFIX
-scripts/               developer tooling: log generators and benchmarks
-tests/                 test runner and fixtures
-docs/                  benchmark method and demo recording notes
-logs/                  example dataset, the default input directory
-```
-
-The script targets **bash 3.2**, the version macOS ships, so it needs no newer bash installed:
-no associative arrays, no `mapfile`, no `${var,,}`. All `awk` is POSIX so the same code runs
-under BSD awk, gawk, mawk and busybox awk.
+The image is Alpine-based and runs as a non-root user, so `--user` keeps the generated reports and
+archives owned by you.
 
 ## Testing
 
@@ -213,13 +170,9 @@ under BSD awk, gawk, mawk and busybox awk.
 shellcheck -S style logsentry install.sh uninstall.sh scripts/*.sh tests/*.sh
 ```
 
-The suite is plain Bash — no framework to install — and every case asserts a real value, so it
-fails when behaviour regresses. It writes reports and archives to a temporary directory, never
-into the repository. Fixtures live in `tests/fixtures/`, including `tricky/` (`error_rate=0`,
-`WARN`, `FATAL`) which locks in whole-word level matching, and `nested/` for `-r` and `--pattern`.
-
-[CI](.github/workflows/ci.yml) runs on every push: ShellCheck, the test suite on Ubuntu and
-macOS, and a Docker build whose container output is diffed against the host run.
+[CI](.github/workflows/ci.yml) runs both on every push, plus a Docker build whose container output
+is diffed against the host run — that is what proves the POSIX awk engine behaves identically under
+busybox awk.
 
 ## License
 
